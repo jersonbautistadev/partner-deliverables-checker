@@ -1,0 +1,5 @@
+Django>=5.2.18,<5.3
+Pillow>=12.3.0,<14
+whitenoise>=6.9,<7
+gunicorn>=23,<26
+psycopg[binary]>=3.2,<4

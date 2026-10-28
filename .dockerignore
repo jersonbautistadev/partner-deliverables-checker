@@ -1,0 +1,10 @@
+.git
+.venv
+.env
+__pycache__
+*.pyc
+*.sqlite3
+private_uploads
+staticfiles
+test-results
+.coverage

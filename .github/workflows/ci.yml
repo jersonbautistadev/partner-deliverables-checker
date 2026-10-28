@@ -1,0 +1,49 @@
+name: Quality checks
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: deliverables
+          POSTGRES_PASSWORD: ci-only-password
+          POSTGRES_DB: deliverables
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U deliverables"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DJANGO_DEBUG: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: python -m pip install -r requirements-dev.txt
+      - run: ruff check .
+      - run: python manage.py check
+      - run: python manage.py makemigrations --check --dry-run
+      - run: coverage run --source=checker manage.py test --verbosity 2
+      - run: coverage report -m
+      - name: Test database workflow against PostgreSQL
+        run: python manage.py test checker --verbosity 2
+        env:
+          POSTGRES_HOST: localhost
+          POSTGRES_USER: deliverables
+          POSTGRES_PASSWORD: ci-only-password
+          POSTGRES_DB: deliverables
+      - run: python manage.py collectstatic --noinput
+      - name: Check production settings
+        run: python manage.py check --deploy --fail-level WARNING
+        env:
+          DJANGO_DEBUG: "0"
+          DJANGO_SECRET_KEY: ci-only-key-with-enough-length-and-entropy-for-django-deploy-check-729c6e25
+          DJANGO_ALLOWED_HOSTS: demo.example.com
+          CSRF_TRUSTED_ORIGINS: https://demo.example.com

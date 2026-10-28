@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="760" viewBox="0 0 1200 760" role="img" aria-labelledby="title desc">
+<title id="title">Partner Deliverables Checker architecture</title><desc id="desc">A browser accesses Django session and role checks, which call transactional services. Services use a pure deterministic engine, a database, and private original files. Downloads require authorization.</desc>
+<defs><marker id="arrow" markerWidth="9" markerHeight="9" refX="8" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8" fill="none" stroke="#7f9c91" stroke-width="1.5"/></marker></defs>
+<rect width="1200" height="760" fill="#f5f8f6"/>
+<g font-family="Arial, sans-serif" fill="#203b32">
+<text x="65" y="65" font-size="13" letter-spacing="2" fill="#137b70">PARTNER DELIVERABLES CHECKER</text>
+<text x="65" y="110" font-size="32" font-weight="bold">One team. A traceable checking workflow.</text>
+<text x="65" y="142" font-size="15" fill="#75887e">Django application design · Engine verified; web runtime validation pending</text>
+<g fill="white" stroke="#dce6df" stroke-width="1.5">
+<rect x="65" y="208" width="275" height="111" rx="12"/>
+<rect x="430" y="208" width="320" height="111" rx="12"/>
+<rect x="840" y="208" width="295" height="111" rx="12"/>
+<rect x="65" y="430" width="275" height="118" rx="12"/>
+<rect x="430" y="430" width="320" height="118" rx="12"/>
+<rect x="840" y="430" width="295" height="118" rx="12"/>
+</g>
+<g font-size="18" font-weight="bold">
+<text x="88" y="246">Browser</text><text x="453" y="246">Sessions + authorization</text><text x="863" y="246">Application services</text>
+<text x="88" y="468">Deterministic engine</text><text x="453" y="468">Database</text><text x="863" y="468">Private original files</text>
+</g>
+<g font-size="13" fill="#75887e">
+<text x="88" y="273">Server-rendered forms and reports</text><text x="88" y="294">Coordinator / contributor views</text>
+<text x="453" y="273">Django login + CSRF protection</text><text x="453" y="294">Role checks + package ownership</text>
+<text x="863" y="273">Transactions, fingerprints, audit</text><text x="863" y="294">Versioned reports and reviews</text>
+<text x="88" y="495">Bounded TXT / DOCX / JPG / PNG</text><text x="88" y="516">Pure Python rules + Pillow</text>
+<text x="453" y="495">SQLite local / PostgreSQL deployed</text><text x="453" y="516">Instructions, history, digests, results</text>
+<text x="863" y="495">Random names outside static assets</text><text x="863" y="516">Authorized attachment downloads</text>
+</g>
+<g stroke="#7f9c91" stroke-width="2" fill="none" marker-end="url(#arrow)">
+<path d="M340 264 H424"/><path d="M750 264 H834"/>
+<path d="M988 319 V424"/>
+<path d="M965 319 V370 H590 V424"/>
+<path d="M940 319 V350 H202 V424"/>
+</g>
+<rect x="65" y="607" width="1070" height="85" rx="12" fill="#e8f2eb"/>
+<text x="88" y="638" font-size="15" font-weight="bold" fill="#40745b">Why results stay current</text>
+<text x="88" y="664" font-size="14" fill="#62836d">Engine version + instruction revisions + validated file digests / availability → input fingerprint → current report</text>
+<text x="65" y="731" font-size="12" fill="#84998b">Production boundary: HTTPS / Caddy → request limits / Nginx → Gunicorn / Django. Only HTTPS ports are public.</text>
+</g></svg>

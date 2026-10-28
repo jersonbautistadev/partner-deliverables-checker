@@ -1,0 +1,37 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>{% block title %}Partner Deliverables Checker{% endblock %}</title>
+  <link rel="stylesheet" href="{% static 'app.css' %}">
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <aside class="sidebar">
+    <a class="brand" href="{% url 'dashboard' %}"><span class="brand-icon">✓</span><span>Partner<br><strong>Deliverables</strong></span></a>
+    <div class="workspace">EVENT WORKSPACE<span>CS Expo · Demo team</span></div>
+    <nav aria-label="Main navigation">
+      <a class="{% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}" href="{% url 'dashboard' %}"><span>◫</span> Overview</a>
+      <a class="{% if request.resolver_match.url_name == 'partners' %}active{% endif %}" href="{% url 'partners' %}"><span>◈</span> Partners &amp; requirements</a>
+      <a href="{% url 'package_new' %}"><span>＋</span> New package</a>
+      {% if coordinator %}<a href="{% url 'audit' %}"><span>≡</span> Audit trail</a>{% endif %}
+    </nav>
+    <div class="sidebar-note"><span class="dot"></span> One team, one source of truth<p>Every finding is linked to a reviewed requirement.</p></div>
+    {% if user.is_authenticated %}
+    <div class="profile"><div class="avatar">{{ user.username|first|upper }}</div><div><strong>{{ user.username }}</strong><small>{% if coordinator %}Coordinator{% else %}Contributor{% endif %}</small></div></div>
+    <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="signout" type="submit">Sign out ↗</button></form>
+    {% endif %}
+  </aside>
+  <div class="shell">
+    <header class="topbar"><span>CS Expo <span class="muted">/</span> Partner coordination</span><span class="timezone">◷ Asia/Manila · UTC+08</span></header>
+    <main id="main">
+      {% for message in messages %}<div role="status" class="notice {{ message.tags }}">{{ message }}</div>{% endfor %}
+      {% block content %}{% endblock %}
+      <footer>Partner Deliverables Checker <span>Fictional sample data · Portfolio demo</span></footer>
+    </main>
+  </div>
+</body>
+</html>

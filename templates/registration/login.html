@@ -1,0 +1,8 @@
+{% extends 'base.html' %}
+{% block title %}Sign in · Partner Deliverables{% endblock %}
+{% block content %}
+<div class="login-wrap"><p class="eyebrow">THE DETAILS MAKE THE PARTNERSHIP</p><h1>A clearer path<br>to every submission.</h1><p class="lede">Keep publishing requirements, files, and review decisions together.</p>
+<section class="panel login-panel"><h2>Sign in to your team</h2><p class="muted">Use the account created by your coordinator.</p>
+<form method="post">{% csrf_token %}{{ form.as_p }}<input type="hidden" name="next" value="{{ next }}"><button class="button" type="submit">Sign in →</button></form></section>
+<p class="muted">Local demo accounts are printed by <code>seed_demo</code>. Public registration is disabled.</p></div>
+{% endblock %}

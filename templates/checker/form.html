@@ -1,0 +1,5 @@
+{% extends 'base.html' %}
+{% block content %}
+<a class="back" href="{% url 'dashboard' %}">← Overview</a><div class="page-heading"><div><p class="eyebrow">PARTNER DELIVERABLES</p><h1>{{ title }}</h1><p class="lede">{{ intro }}</p></div></div>
+<section class="panel form-panel"><form method="post">{% csrf_token %}{{ form.as_p }}<div class="actions"><button class="button" type="submit">Save changes →</button><a class="button secondary" href="{% url 'dashboard' %}">Cancel</a></div></form></section>
+{% endblock %}
