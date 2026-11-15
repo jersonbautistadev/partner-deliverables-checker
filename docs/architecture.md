@@ -1,40 +1,25 @@
 # Architecture
 
-One application and one event team. Business rules are plain Python functions, independent of web requests and persistence.
+Django 5.2 / Python 3.12 serves templates and plain CSS. PostgreSQL is the production database; SQLite is for local development. Vercel runs the WSGI application as a function and serves collected static assets. Remote originals use a private S3-compatible bucket. Compose alternatively runs Gunicorn, a mail worker, PostgreSQL, Nginx, and Caddy on one Linux host.
 
-![Application architecture](architecture.svg)
+## Data boundaries
 
-```mermaid
-flowchart TD
-    Browser["Browser: forms and reports"] --> Auth["Django sessions + CSRF"]
-    Auth --> Access["Role and package authorization"]
-    Access --> Services["Application services + transactions"]
-    Services --> Engine["Deterministic checking engine"]
-    Services --> DB[("SQLite local / PostgreSQL deployment")]
-    Services --> Files["Private original files"]
-    Files --> Download["Authorized attachment download"]
-    Download --> Browser
-```
+`Workspace` -> `Partner` -> `Requirement` / `Package`. Assets and reports belong to packages; revisions belong to requirements. Manual reviews are attached to package+requirement+fingerprint. These records inherit their workspace through their parent relation. `AuditEvent` has an explicit workspace; global account events have no workspace and are excluded from workspace audit pages.
 
-The production network is HTTPS → Caddy → Nginx → Gunicorn/Django. Caddy manages TLS. Nginx caps request bodies and limits login requests. Only Caddy publishes host ports. Neither proxy serves private files. WhiteNoise serves collected CSS only.
+`Account` associates a unique normalized email and verification timestamp with Django's existing User model. `Membership` stores one role per user/workspace. Global groups are historical data only. There is no superuser workspace bypass. `ActionToken` stores only a random token's SHA-256 digest, purpose, bound email/user/workspace, expiry and consumption time. `MailJob` holds delivery data privately until acknowledgement, then clears body and recipient. `RateBucket` uses secret-keyed identity digests and short-lived fixed windows.
 
-```mermaid
-erDiagram
-    PARTNER ||--o{ REQUIREMENT : defines
-    REQUIREMENT ||--o{ REQUIREMENT_REVISION : retains
-    PARTNER ||--o{ PACKAGE : receives
-    USER ||--o{ PACKAGE : owns
-    PACKAGE ||--o{ ASSET : contains
-    PACKAGE ||--o{ CHECK_RUN : checks
-    PACKAGE ||--o{ MANUAL_REVIEW : receives
-    REQUIREMENT ||--o{ MANUAL_REVIEW : qualifies
-    USER ||--o{ AUDIT_EVENT : performs
-```
+## Request flow
 
-Requirements and packages both carry a submission stage. A pre-event package uses only that partner's pre-event instructions. Each current asset occupies one unique `(package, slot)` pair. Requirement revisions are unique by `(requirement, number)`. Foreign-key protection prevents accidentally removing referenced partners, requirements or users through the ORM.
+Django sessions authenticate the user. Workspace middleware validates email verification and the selected membership on each application request. Missing/revoked workspace selection goes to the workspace chooser (APIs return 403). Views/forms filter all object queries and model choices. Coordinators can access packages only within the selected workspace; contributors also require ownership. Side effects use POST and CSRF, except the isolated machine mail/maintenance endpoints which use a constant-time bearer-secret check and accepts no user payload.
 
-The current report is a retained check run keyed by a SHA-256 fingerprint of engine version, current requirement snapshots and validated asset metadata/content digests/availability. Requirements include approval state, source, revision and deadline. Replacing an asset includes its new record ID, conservatively invalidating even a same-content replacement. Manual reviews reference this exact fingerprint; old decisions stay in history but do not apply after inputs change.
+## Writes and concurrency
 
-Writes create the change and its audit event in the same database transaction. Package operations lock the package row in PostgreSQL. New file writes are cleaned up if their database transaction fails; replaced/removed files are deleted after commit. A process crash between storage and database operations can still leave orphaned files; reconciliation is a deployment follow-up.
+Workspace mutations lock the workspace row in a transaction before checking count/storage limits or changing related records. Uploads then lock the package, save a new original, update the asset and report, and schedule old-file removal on commit. A failed save keeps the previous database state; failed orphan cleanup is logged for maintenance. Email/invitation lifecycle operations lock account/workspace/token rows in a consistent order. Membership changes and self-deactivation serialize coordinator-count checks through workspace locks. SQLite does not provide equivalent row locks, so concurrency guarantees are verified against PostgreSQL.
 
-No task queue, separate API server, frontend framework, tenant layer or external service is needed in v1. Reports run synchronously because each package has at most four bounded files and uses pre-extracted metadata. A queue becomes useful only if measured workload justifies it.
+The pure engine in `engine.py` remains independent of Django. Services compute current input fingerprints, validate upload contents and generate reports. Requirements are refreshed on authorized reads instead of synchronously regenerating every package on an instruction edit. File availability is included in each input read. External mutation of bytes is not rehashed on every read; the reconciliation/backup checks and storage access controls address that operational boundary.
+
+## Accounts and operations
+
+Django password validators, hashing, session login/logout and password-reset tokens are reused. Custom verification/invitation tokens are random, expiring and consumed on POST; GET does not change verification or membership. Delivery is queued to avoid SMTP-dependent response timing and to retry transport failures. Delivery is at least once: a worker crash after SMTP acknowledgement but before commit can duplicate an email. Tokens remain single use.
+
+Readiness checks database access, storage reachability, and old pending mail. They do not prove bucket privacy, write permissions, end-to-end SMTP arrival, or capacity. Offline encrypted recovery bundles use streaming AES-256-GCM and include both database and original files. See `operations.md` for consistency, encryption-key handling, restore and retention requirements.

@@ -1,0 +1,9 @@
+Django>=5.2.18,<5.3
+Pillow>=12.3.0,<14
+whitenoise>=6.9,<7
+gunicorn>=23,<26
+psycopg[binary]>=3.2,<4
+dj-database-url>=2.3,<4
+django-storages[s3]>=1.14,<2
+cryptography>=50,<51
+tzdata>=2026.1

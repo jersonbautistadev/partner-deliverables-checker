@@ -1,13 +1,14 @@
 import getpass
 
 from django.contrib.auth import get_user_model
-from django.contrib.auth.models import Group
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
 from checker.services import audit
+from checker.models import Account, Membership, Workspace
+from checker.accounts import queue_verification
 
 
 class Command(BaseCommand):
@@ -15,10 +16,13 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument("username")
+        parser.add_argument("--email", required=True)
+        parser.add_argument("--workspace", required=True, type=int)
         parser.add_argument("--role", choices=["Coordinator", "Contributor"], required=True)
 
     def handle(self, *args, **options):
-        user = get_user_model()(username=options["username"])
+        user = get_user_model()(username=options["username"], email=options["email"].strip().casefold())
+        workspace = Workspace.objects.get(pk=options["workspace"])
         password = getpass.getpass("Password: ")
         if password != getpass.getpass("Confirm password: "):
             raise CommandError("Passwords do not match.")
@@ -30,7 +34,8 @@ class Command(BaseCommand):
         with transaction.atomic():
             user.set_password(password)
             user.save()
-            group, _ = Group.objects.get_or_create(name=options["role"])
-            user.groups.add(group)
-            audit(user, "account.provisioned", f"user:{user.id}", role=options["role"], via="operator CLI")
+            account = Account.objects.create(user=user, email=user.email)
+            Membership.objects.create(user=user, workspace=workspace, role=options["role"].lower())
+            queue_verification(account)
+            audit(user, "account.provisioned", f"user:{user.id}", workspace=workspace, role=options["role"], via="operator CLI")
         self.stdout.write(self.style.SUCCESS(f"Created {user.username} ({options['role']})."))

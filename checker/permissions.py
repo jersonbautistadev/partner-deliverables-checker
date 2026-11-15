@@ -1,28 +1,44 @@
 from django.core.exceptions import PermissionDenied
 
+from checker.models import Account, Membership
 
-def is_coordinator(user):
-    return user.is_authenticated and user.is_active and (
-        user.is_superuser or user.groups.filter(name="Coordinator").exists()
+
+def is_verified(user):
+    return (
+        user.is_authenticated
+        and user.is_active
+        and Account.objects.filter(
+            user=user, user__is_active=True, verified_at__isnull=False
+        ).exists()
     )
 
 
-def require_member(user):
-    if not (is_coordinator(user) or (
-        user.is_authenticated and user.is_active and
-        user.groups.filter(name="Contributor").exists()
-    )):
-        raise PermissionDenied("An event-team role is required.")
+def is_coordinator(user, workspace=None):
+    return bool(
+        workspace
+        and is_verified(user)
+        and Membership.objects.filter(user=user, workspace=workspace, role="coordinator").exists()
+    )
 
 
-def require_coordinator(user):
-    if not is_coordinator(user):
-        raise PermissionDenied("Only coordinators can change requirements or record reviews.")
+def require_member(user, workspace):
+    if not (
+        is_verified(user)
+        and workspace
+        and Membership.objects.filter(user=user, workspace=workspace).exists()
+    ):
+        raise PermissionDenied("An active, verified workspace membership is required.")
 
 
-def visible_packages(user):
+def require_coordinator(user, workspace):
+    require_member(user, workspace)
+    if not is_coordinator(user, workspace):
+        raise PermissionDenied("Only workspace coordinators can perform this action.")
+
+
+def visible_packages(user, workspace):
     from checker.models import Package
 
-    require_member(user)
-    qs = Package.objects.select_related("partner", "owner")
-    return qs if is_coordinator(user) else qs.filter(owner=user)
+    require_member(user, workspace)
+    qs = Package.objects.filter(partner__workspace=workspace).select_related("partner", "owner")
+    return qs if is_coordinator(user, workspace) else qs.filter(owner=user)

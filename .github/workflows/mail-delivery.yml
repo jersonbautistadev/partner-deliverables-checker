@@ -1,0 +1,58 @@
+name: Dispatch queued account email
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '*/5 * * * *'
+    - cron: '23 3 * * *'
+permissions:
+  contents: read
+concurrency:
+  group: mail-dispatch
+  cancel-in-progress: false
+jobs:
+  deliver:
+    # Enable only after a staging rehearsal and explicit approval for real-user email.
+    if: vars.ENABLE_MAIL_DISPATCH == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Invoke protected dispatcher
+        env:
+          MAIL_DISPATCH_URL: ${{ vars.MAIL_DISPATCH_URL }}
+          OPS_SECRET: ${{ secrets.OPS_SECRET }}
+        run: |
+          python - <<'PY'
+          import os, urllib.request
+          url = os.environ['MAIL_DISPATCH_URL']
+          if not url.startswith('https://') or len(os.environ['OPS_SECRET']) < 32:
+              raise SystemExit('Configure an HTTPS dispatcher URL and OPS_SECRET.')
+          request = urllib.request.Request(url, data=b'', method='POST',
+              headers={'Authorization': 'Bearer ' + os.environ['OPS_SECRET']})
+          with urllib.request.urlopen(request, timeout=100) as response:
+              if response.status != 200:
+                  raise SystemExit('Dispatcher failed.')
+          print('Mail dispatcher acknowledged.')
+          PY
+
+  maintenance:
+    if: vars.ENABLE_MAIL_DISPATCH == 'true' && (github.event_name == 'workflow_dispatch' || github.event.schedule == '23 3 * * *')
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Prune expired security records
+        env:
+          MAINTENANCE_URL: ${{ vars.MAINTENANCE_URL }}
+          OPS_SECRET: ${{ secrets.OPS_SECRET }}
+        run: |
+          python - <<'PY'
+          import os, urllib.request
+          url = os.environ['MAINTENANCE_URL']
+          if not url.startswith('https://') or len(os.environ['OPS_SECRET']) < 32:
+              raise SystemExit('Configure MAINTENANCE_URL and OPS_SECRET.')
+          request = urllib.request.Request(url, data=b'', method='POST',
+              headers={'Authorization': 'Bearer ' + os.environ['OPS_SECRET']})
+          with urllib.request.urlopen(request, timeout=100) as response:
+              if response.status != 200:
+                  raise SystemExit('Maintenance failed.')
+          print('Maintenance acknowledged.')
+          PY

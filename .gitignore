@@ -9,3 +9,12 @@ staticfiles/
 htmlcov/
 .ruff_cache/
 test-results/
+
+.local-mail/
+.local-backups/
+.runtime/
+.venv-release/
+
+.env.*
+!.env.example
+.vercel/

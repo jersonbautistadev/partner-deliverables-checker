@@ -1,146 +1,94 @@
 # Partner Deliverables Checker
 
-A solo portfolio project for event media-partnership coordination. It turns manually reviewed publishing instructions into traceable submission checks: word counts, image dimensions, required files and phrases, plus recorded human reviews.
+A Django application for teams coordinating event media partnerships. It checks publishing packages against reviewed instructions: word bounds, required phrases/files, exact image dimensions, and recorded human decisions. A ready package has passed configured checks; delivery to the partner happens outside this app.
 
-**Current state:** the checking engine and standalone demo run in this workspace; 38 engine tests pass. The Django application, migrations, integration tests, and deployment configuration are written, but **have not been executed here**: this environment blocks PyPI downloads and has no browser binary. Do not describe this as a deployed or fully validated application yet. See [verification status](docs/verification.md).
+## Release status
 
-## Try the verified increment
+Public-account and workspace features are implemented. Local tests cover SQLite and PostgreSQL, account flows, isolation, quotas, concurrent changes, and encrypted recovery. The production Vercel project and external services have **not** been connected or deployed. See [release evidence and remaining gates](docs/release-readiness.md) and [verification](docs/verification.md). Passing local tests is not evidence of a working hosted deployment.
 
-Open [the standalone engine demo](docs/engine-demo.html). It contains real output from checks executed on fictional files, with all four result types. It is a generated report, not the authenticated website.
+The UI retains the editorial layout, responsive worklist, source-linked findings, and accessible native forms. New accounts create a private workspace or accept an invitation. Roles are per workspace: a person can coordinate one team and contribute to another.
 
-With Python 3.12+ and Pillow installed:
+## Run locally
 
-```bash
-python scripts/demo_checks.py
-python -m unittest tests.test_engine -v
-```
-
-## Stack and why
-
-| Choice | Purpose and tradeoff |
-| --- | --- |
-| Python 3.12 + Django 5.2 LTS | Built-in session authentication, CSRF protection, forms, ORM, migrations and testing. Less infrastructure to learn at once. |
-| Django templates + plain CSS | A responsive website without a separate frontend build or state management layer. |
-| SQLite locally | No database service needed for your first demo. Local development only; concurrent team writes use PostgreSQL. |
-| PostgreSQL for deployment | Transactions and row locks for coordinated changes and uploads. |
-| Pillow | Decode and validate JPG/PNG files and read natural pixel dimensions. |
-| Python ZIP/XML libraries | Bounded DOCX text extraction without starting Office, extracting archives to disk, or fetching relationships. |
-| Gunicorn + Docker Compose | Documented Linux deployment with persistent database and private file volumes. |
-
-Local development uses free, open-source software. Hosting is optional until the local workflow passes. No cloud subscriptions are required to start. AI extraction, OCR, messaging, multiple organizations and public registration are outside v1.
-
-## Local setup
-
-Install Python 3.12 or newer. In PowerShell, in this directory:
+Use Python 3.12 (see `.python-version`). From this directory in PowerShell:
 
 ```powershell
 py -3.12 -m venv .venv
-.\.venv\Scripts\python -m pip install -r requirements-dev.txt
+.\.venv\Scripts\python -m pip install --require-hashes -r requirements.lock
 .\.venv\Scripts\python manage.py migrate
-.\.venv\Scripts\python manage.py seed_demo
 .\.venv\Scripts\python manage.py runserver
 ```
 
-On macOS/Linux:
+Open `http://127.0.0.1:8000/accounts/signup/`. Signup queues a verification message. In another terminal, deliver queued messages to the **local file mailbox**, then open the verification link from the newest file in `.local-mail/`:
 
-```bash
-python3.12 -m venv .venv
-.venv/bin/python -m pip install -r requirements-dev.txt
-.venv/bin/python manage.py migrate
-.venv/bin/python manage.py seed_demo
-.venv/bin/python manage.py runserver
+```powershell
+.\.venv\Scripts\python manage.py send_mail_queue --once
 ```
 
-Open `http://127.0.0.1:8000/`. Seeding requires an empty development database and refuses production mode. Re-running it leaves existing data unchanged and returns an explanatory error.
+POST-confirm the link, sign in, and create a workspace. To process local mail continuously, omit `--once`. The production SMTP backend is selected when `DJANGO_DEBUG=0`; no console/file mailbox is a production delivery service. `.env` is read by Compose, not automatically by local Django.
 
-| Fictional account | Role | Password, local demo only |
-| --- | --- | --- |
-| `demo_coordinator` | Coordinator | `Demo-Only-2026!` |
-| `demo_alex` | Contributor; owns two packages | `Demo-Only-2026!` |
-| `demo_sam` | Contributor; owns the ready example | `Demo-Only-2026!` |
-
-The seed includes three fictional partners, twelve instructions, and three packages. “Campus Current” has a wrong-size poster, a missing caption and a pending logo review. “Signal Student Network” needs its cover image. “DevLoop Journal” has a complete text package. A deliberately ambiguous post-event instruction has no package yet.
-
-Use an empty separate database for real pilot work. Provision accounts with Django password validation:
-
-```bash
-python manage.py create_team_user jerson --role Coordinator
-python manage.py create_team_user contributor_name --role Contributor
-python manage.py changepassword contributor_name
-```
-
-These examples assume the virtual environment is activated; alternatively use its Python path. `.env` is read by Docker Compose, **not automatically by local Django**. Local defaults work without it. Production settings come from process environment variables.
-
-## First end-to-end exercise, once Django runs
-
-1. Sign in as `demo_coordinator`. Open **Launch press kit**.
-2. Read each finding and follow its requirement link to the source and revision history.
-3. Replace the 1000 × 1000 poster with a 1080 × 1080 PNG. Observe the dimension finding change.
-4. Upload a caption TXT file. Observe the missing-file finding change.
-5. Download and inspect the poster. Record a logo-placement pass or fail with an honest note. The seed poster has no actual logo, so a real review should fail it.
-6. Revise a requirement or replace a file. Observe a new report and invalidated manual review.
-7. Sign in as `demo_sam`. Attempt to open Alex's package URL. Expect a 404, enforced by the server.
+For fictional fixtures only, `python manage.py seed_demo` works in an empty development database and creates verified `example.test` accounts with the documented development-only password printed by the command. Production mode rejects seeding. The seeder, fixtures, private files, local mail, and local databases are excluded from deployment artifacts.
 
 ## Permissions
 
-| Action | Coordinator | Contributor |
+| Action | Workspace coordinator | Workspace contributor |
 | --- | --- | --- |
-| Read shared requirements, sources and their history | Yes | Yes |
-| Create/revise/approve requirements or add partners | Yes | No |
-| Create a package | For any active team member | For self |
-| Read report, upload, remove or download package files | Any package | Own packages only |
-| Record subjective review decisions | Yes | No |
-| Read audit trail | Yes | No |
-| Provision accounts and change roles | Operator CLI | No |
+| Read workspace partners, requirements, sources, history and deadlines | Yes | Yes |
+| Create/revise requirements or add partners | Yes | No |
+| Create a package | For active verified members | For self |
+| Open report or upload/remove/download files | Workspace packages | Own packages in that workspace |
+| Record subjective reviews | Yes | No |
+| Read workspace audit trail | Yes | No |
+| Invite, revoke invitations, change/remove membership | Yes | No |
 
-An authenticated account without a team role has no workspace access. The application does not expose user administration or a Django admin route. Roles are Django groups; object access is checked separately in `permissions.py` and every relevant view.
+Coordinators do not receive access to other workspaces. Global Django groups and superuser status do not bypass workspace membership. Direct object IDs, API requests, form choices, and private-download routes enforce the same boundaries. A selected workspace is stored in the session and checked on every request. Revoked access is rejected rather than silently applying an action to a different workspace.
 
-## How checks behave
+The last active verified coordinator cannot be demoted, removed, or deactivate their account. Promote another verified member first. Membership removal and account deactivation retain package ownership, requirement snapshots, reports, and audit history. Account deactivation disables sign-in and removes memberships; the operator handles any later identity/retention requests.
 
-- Word bounds are **inclusive**. Either bound can be omitted. Words are Unicode letters/digits; internal apostrophes and hyphens keep a word together. This is a documented project policy, not a claim to match Microsoft Word's counter.
-- Phrases use Unicode NFKC normalization, case folding and collapsed whitespace, then substring matching. Punctuation remains significant. Hashtags retain `#`.
-- Dimensions are exact natural pixel width/height. EXIF display orientation, DPI, crop, visual quality and logo position do not affect this rule.
-- Each package has at most one article, caption, promotional image and logo. Required-file checks validate configured slots.
-- Every approved non-ambiguous rule produces `passed`, `failed`, `missing`, or `needs_review`. Unapproved/ambiguous instructions never pass. A stage with no requirements remains `needs_review`.
-- Subjective checks require a coordinator's decision and explanation, scoped to the current fingerprint.
-- Deadlines are entered/displayed in **Asia/Manila**, stored as aware datetimes, and shown independently from readiness. An elapsed deadline does not prove a submission was missed; delivery happens outside this app.
-- Changes trigger report generation. Reads also verify the input fingerprint to avoid returning outdated cached findings. File unavailability is included. Old check runs and reviews are retained.
+## Accounts and email
 
-## Upload safety
+Signup and verification/recovery acknowledgements do not disclose whether an identity exists. Verification and invitation links expire and are consumed only on POST confirmation; new links revoke previous outstanding links for the same destination/purpose. Invitations require the receiving verified email and do not elevate an existing member automatically. Password reset/change use Django's built-in views and token mechanism.
 
-Each file is at most 5 MiB; plain/extracted text is at most 2 MiB; images are at most 20 megapixels. Extensions and parsed content must agree. Text uses UTF-8. Animated images, invalid images and unsupported file types are rejected. DOCX processing reads only supported text; it rejects DTDs/entities, excessive expansion/parts, unsafe archive paths, macros/embedded objects, external relationships, tracked changes, fields and text boxes. Normal body paragraphs and tables are supported; headers, footers, comments, footnotes and image text are excluded.
+Email is stored in a durable database queue. Run a worker on Compose, or configure the protected `POST /ops/mail/` endpoint with an external scheduler for Vercel. Successful delivery clears the stored body and recipient. Retries are bounded; monitor delivery failures and queue age. SMTP acknowledgement does not guarantee arrival in an inbox. See [deployment](docs/deployment.md).
 
-Original files use random server-side names outside static assets. Downloads require package authorization, use attachment disposition and `application/octet-stream`, and disable content sniffing and caching. Originals are never displayed inline. Default templates escape text. There is no archive extraction, Office execution or outgoing fetch of references.
+## Checks and file handling
 
-This is **not malware scanning**. Read [security notes and limitations](docs/security.md) before a real pilot.
+- Word bounds are inclusive. Unicode letters/digits are words; internal apostrophes and hyphens remain part of a word. This is project policy, not a promise to match Microsoft Word.
+- Phrase matching uses NFKC normalization, case folding, and collapsed whitespace. Punctuation remains significant.
+- Dimensions are exact natural pixels, independent of EXIF orientation, DPI, crop, or logo placement.
+- Four file slots exist per package: article, caption, promotional image, and logo.
+- Findings are passed, failed, missing, or needs review. Ambiguous or unapproved instructions never pass automatically.
+- Manual decisions apply to an exact input fingerprint. Replacements and changed instructions invalidate old approvals.
+- Upload/removal generates the affected report. Requirement revisions are applied lazily when authorized report/dashboard reads verify the current fingerprint, avoiding a large synchronous fan-out during editing.
+- Requirement history is paginated; previous snapshots remain in the database.
+- Deadlines display in Asia/Manila, separately from readiness. An elapsed deadline does not prove delivery was missed.
 
-## Checks to run locally and in CI
+Files are at most 5 MiB locally/Compose; Vercel defaults to 3 MiB to leave room beneath function request limits. Extracted/plain text is bounded to 2 MiB and images to 20 megapixels. TXT/DOCX and JPG/PNG undergo content validation, not just extension/MIME checks. DOCX extraction is bounded and rejects unsafe XML/archive features, macros, external relationships, tracked changes, fields and text boxes. Normal body paragraphs/tables are supported; headers, footnotes, image text and other excluded content are not checked.
+
+Originals are private attachments. S3 deployments issue authorized signed attachment links valid for 60 seconds; recipients can use those bearer URLs until expiry. Validation is not malware scanning. Previous original bytes are removed after a successful replacement/removal; historical digests and reviews are retained. Use a separate archive if old originals must be preserved.
+
+## Initial usage limits
+
+Defaults are configurable through Django environment settings: 3 created workspaces/account; 20 memberships/account; 20 members and 20 pending invitations/workspace; 100 MiB current-file storage/workspace; 50 partners, 200 packages and 500 requirements/workspace; 60 upload operations/hour/workspace. These are guardrails, not measured hosting capacity.
+
+Account POST requests have an IP limit of 10/minute and an identity limit of 5/15 minutes. Checking operations have IP/user limits of 60/minute. Counters are shared in the database. Shared networks and fixed-window boundaries affect those limits. Configure and load-test them for the actual team and provider quotas.
+
+## Verify changes
 
 ```bash
-ruff check .
+python -m pip install -r requirements-dev.txt
+python -m ruff check .
 python manage.py check
 python manage.py makemigrations --check --dry-run
 python manage.py test --verbosity 2
 python manage.py collectstatic --noinput
+python -m pip_audit -r requirements.lock --disable-pip --no-deps
+python scripts/rehearse_migration.py
+python scripts/rehearse_recovery.py
 ```
 
-The GitHub Actions workflow runs lint, migration checks, tests with SQLite and PostgreSQL, static collection and Django deployment checks. A workflow file is not evidence of a green CI run; no GitHub run has occurred yet.
+Use PostgreSQL for concurrency tests; SQLite skips row-lock tests. The PostgreSQL backup rehearsal additionally needs matching `pg_dump` / `pg_restore` clients and a local test role permitted to create temporary databases. See [deployment](docs/deployment.md), [architecture](docs/architecture.md), [API](docs/api.md), [security](docs/security.md), and [migration/recovery procedures](docs/operations.md).
 
-Dependency ranges are bounded but are **not a validated lockfile**. After a clean local install and a green CI run, freeze the resolved versions into `requirements.lock`, test a fresh install from that lock and use it for the release image. Updating dependencies and pinning image digests are documented release gates.
+## Deployment target
 
-## Project map
-
-```text
-checker/engine.py       Pure checks, counting policy and upload inspection
-checker/models.py       Partners, requirements, snapshots, packages, assets and reports
-checker/services.py     Transactions, audit events, fingerprints and review lifecycle
-checker/permissions.py  Team roles and package access filtering
-checker/forms.py        Validated browser inputs and Manila deadline conversion
-checker/views.py        HTTP handling and authorization
-templates/ + static/    Server-rendered responsive UI
-tests/test_engine.py    Framework-independent executable tests
-checker/tests.py        Database and HTTP integration tests
-docs/                   Architecture, walkthrough, milestones, pilot and verification
-```
-
-See [architecture](docs/architecture.md), [API contract](docs/api.md), [deployment](docs/deployment.md), [milestones](docs/milestones.md), [interview notes](docs/engineering-notes.md), [walkthrough](docs/walkthrough.md) and [pilot plan](docs/pilot.md).
+Vercel is the requested primary target. It requires external PostgreSQL, a private S3-compatible bucket, SMTP, a mail scheduler and an off-site backup runner/destination. Vercel Hobby scheduling and function limits apply, and free-tier eligibility/capacity is not guaranteed by this project. Use separate databases/buckets/prefixes and mail settings for previews. The optional Linux Compose path includes the app, mail worker, PostgreSQL, Nginx and Caddy.

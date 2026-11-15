@@ -15,7 +15,7 @@ services:
     restart: unless-stopped
   app:
     build: .
-    environment:
+    environment: &app_environment
       DJANGO_DEBUG: "0"
       DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:?Set DJANGO_SECRET_KEY}
       DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:?Set DJANGO_ALLOWED_HOSTS}
@@ -25,6 +25,15 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       PRIVATE_UPLOAD_ROOT: /var/lib/deliverables/private
+      PUBLIC_BASE_URL: https://${APP_DOMAIN}
+      EMAIL_HOST: ${EMAIL_HOST:?Set EMAIL_HOST}
+      EMAIL_PORT: ${EMAIL_PORT:-587}
+      EMAIL_HOST_USER: ${EMAIL_HOST_USER}
+      EMAIL_HOST_PASSWORD: ${EMAIL_HOST_PASSWORD}
+      EMAIL_USE_TLS: ${EMAIL_USE_TLS:-1}
+      DEFAULT_FROM_EMAIL: ${DEFAULT_FROM_EMAIL:?Set DEFAULT_FROM_EMAIL}
+      OPS_SECRET: ${OPS_SECRET:?Set OPS_SECRET}
+      TRUST_PROXY_HEADERS: "1"
     volumes:
       - private_files:/var/lib/deliverables/private
     expose: ["8000"]
@@ -39,6 +48,27 @@ services:
     mem_limit: 512m
     pids_limit: 100
     restart: unless-stopped
+  worker:
+    build: .
+    command: ["python", "manage.py", "send_mail_queue"]
+    environment: *app_environment
+    volumes:
+      - private_files:/var/lib/deliverables/private
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+  backup:
+    profiles: ["operations"]
+    build:
+      context: .
+      dockerfile: deploy/backup.Dockerfile
+    environment:
+      <<: *app_environment
+      BACKUP_ENCRYPTION_KEY: ${BACKUP_ENCRYPTION_KEY}
+    volumes:
+      - private_files:/var/lib/deliverables/private
+      - ${BACKUP_DIRECTORY:-./.local-backups}:/backups
   edge:
     image: nginx:1.28-alpine
     volumes:

@@ -1,0 +1,5 @@
+<article class="package-row">
+  <div class="package-info"><h3><a href="{% url 'package_detail' card.package.id %}">{{ card.package.title }}</a></h3><p class="meta">{{ card.package.partner.name }} / {{ card.package.get_stage_display }}</p><p class="owner">{{ card.package.owner.username }}</p></div>
+  <div class="package-findings">{% if card.ready %}<span class="badge passed">Ready</span><span class="meta">{{ card.counts.passed|default:0 }} passed</span>{% else %}{% if card.counts.failed %}<span class="red">{{ card.counts.failed }} failed</span>{% endif %}{% if card.counts.missing %}<span class="amber">{{ card.counts.missing }} missing</span>{% endif %}{% if card.counts.needs_review %}<span class="purple">{{ card.counts.needs_review }} need review</span>{% endif %}{% endif %}</div>
+  <a class="row-action" href="{% url 'package_detail' card.package.id %}" aria-label="Open report for {{ card.package.title }}">Open report <span aria-hidden="true">&rarr;</span></a>
+</article>

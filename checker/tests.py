@@ -17,7 +17,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from checker.forms import RequirementForm
-from checker.models import AuditEvent, Package, Partner, Requirement
+from checker.models import Account, AuditEvent, Membership, Package, Partner, Requirement, Workspace
 from checker.services import ensure_report, record_revision, store_asset
 from tests.test_engine import image_bytes
 
@@ -42,7 +42,13 @@ class WorkflowTests(TestCase):
         self.coord.groups.add(cg)
         self.alex.groups.add(tg)
         self.sam.groups.add(tg)
-        self.partner = Partner.objects.create(name="Fictional partner")
+        self.workspace = Workspace.objects.create(name='Test event', created_by=self.coord)
+        for user in [self.coord, self.alex, self.sam, self.no_role]:
+            Account.objects.create(user=user, email=f'{user.username}@example.test', verified_at=timezone.now())
+        for user in [self.coord, self.alex, self.sam]:
+            Membership.objects.create(workspace=self.workspace, user=user,
+                role='coordinator' if user == self.coord else 'contributor')
+        self.partner = Partner.objects.create(workspace=self.workspace, name="Fictional partner")
         self.package = Package.objects.create(partner=self.partner, stage="pre", title="Press kit", owner=self.alex)
         self.req = Requirement.objects.create(partner=self.partner, stage="pre", title="Article word count",
                                               kind="word_count", slot="article", config={"min": 2, "max": 3},
@@ -71,13 +77,13 @@ class WorkflowTests(TestCase):
     def test_no_role_denied(self):
         self.client.force_login(self.no_role)
         for route in ["dashboard", "partners", "api_packages", "package_new"]:
-            self.assertEqual(self.client.get(reverse(route)).status_code, 403)
+            self.assertEqual(self.client.get(reverse(route)).status_code, 403 if route == "api_packages" else 302)
 
     def test_contributor_cannot_change_requirements_or_view_audit(self):
         self.client.force_login(self.alex)
         for route in ["partner_new", "requirement_new", "audit"]:
             self.assertEqual(self.client.get(reverse(route)).status_code, 403)
-            self.assertEqual(self.client.post(reverse(route), {}).status_code, 403)
+            self.assertEqual(self.client.post(reverse(route), {}).status_code, 405 if route == "audit" else 403)
         self.assertEqual(self.client.post(reverse("requirement_edit", args=[self.req.id]), {}).status_code, 403)
 
     def test_other_contributor_cannot_read_report_or_upload(self):
@@ -100,7 +106,7 @@ class WorkflowTests(TestCase):
         self.assertIn("attachment", response["Content-Disposition"])
         self.assertEqual(response["X-Content-Type-Options"], "nosniff")
         self.assertIn("no-store", response["Cache-Control"])
-        response.close()
+        self.assertEqual(b"".join(response.streaming_content), b"one two")
 
     def test_no_direct_media_route(self):
         self.upload()
@@ -251,11 +257,11 @@ class WorkflowTests(TestCase):
         self.assertEqual(self.req.history.count(), 2)
 
     def test_invalid_rule_and_ambiguous_approval_rejected(self):
-        self.assertFalse(RequirementForm(self.requirement_payload(minimum=9, maximum=2)).is_valid())
-        self.assertFalse(RequirementForm(self.requirement_payload(ambiguous="on")).is_valid())
+        self.assertFalse(RequirementForm(self.requirement_payload(minimum=9, maximum=2), workspace=self.workspace).is_valid())
+        self.assertFalse(RequirementForm(self.requirement_payload(ambiguous="on"), workspace=self.workspace).is_valid())
 
     def test_manila_deadline_is_converted_to_utc(self):
-        form = RequirementForm(self.requirement_payload(deadline="2026-12-14T00:30"))
+        form = RequirementForm(self.requirement_payload(deadline="2026-12-14T00:30"), workspace=self.workspace)
         self.assertTrue(form.is_valid(), form.errors)
         deadline = form.cleaned_data["deadline"]
         self.assertEqual(deadline.astimezone(ZoneInfo("UTC")), datetime(2026, 12, 13, 16, 30, tzinfo=ZoneInfo("UTC")))

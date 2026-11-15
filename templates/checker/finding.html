@@ -1,0 +1,8 @@
+<article class="finding finding-{{ finding.status }}">
+  <div class="finding-heading"><span class="badge {{ finding.status }}">{% if finding.status == 'needs_review' %}Needs review{% else %}{{ finding.status|capfirst }}{% endif %}</span><h3>{{ finding.title }}</h3></div>
+  <p>{{ finding.message }}</p>
+  {% if finding.requirement_id %}<div class="finding-reference"><a href="{% url 'requirement_detail' finding.requirement_id %}">Requirement #{{ finding.requirement_id }} / revision {{ finding.revision }}</a><span class="meta"> / {{ finding.slot }}</span><p><span class="meta">Source</span> {{ finding.source }}</p></div>{% endif %}
+  {% if coordinator and finding.kind == 'manual' and finding.approved and not finding.ambiguous and finding.status != 'missing' %}<details class="review-box"><summary>Record or update review</summary><p class="meta">Download the current file, inspect it, then record your decision.</p><form method="post" action="{% url 'manual_review' package.id finding.requirement_id %}">{% csrf_token %}{{ review_form.as_p }}<button class="button small" type="submit">Save review</button></form></details>
+  {% elif finding.kind == 'manual' and finding.status != 'missing' %}<p class="meta">A coordinator must inspect the file and record the review.</p>
+  {% elif finding.status == 'missing' or finding.status == 'failed' %}<a class="finding-action" href="#upload-title">Add or replace a file &rarr;</a>{% elif finding.status == 'needs_review' %}<p class="meta">{% if finding.requirement_id %}<a href="{% url 'requirement_detail' finding.requirement_id %}">Review the instruction</a> with a coordinator.{% else %}Ask a coordinator to review the requirements for this stage.{% endif %}</p>{% endif %}
+</article>

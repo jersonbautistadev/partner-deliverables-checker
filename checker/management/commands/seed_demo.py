@@ -10,7 +10,7 @@ from django.db import transaction
 from django.utils import timezone
 from PIL import Image
 
-from checker.models import Package, Partner, Requirement
+from checker.models import Account, Membership, Package, Partner, Requirement, Workspace
 from checker.services import audit, ensure_report, record_revision, store_asset
 
 
@@ -30,9 +30,14 @@ class Command(BaseCommand):
                 group, _ = Group.objects.get_or_create(name=name)
                 user.groups.add(group)
                 audit(user, "account.provisioned", f"user:{user.id}", role=name, fictional=True)
-            campus = Partner.objects.create(name="Campus Current", notes="Fictional student news partner. Sample instructions only.")
-            signal = Partner.objects.create(name="Signal Student Network", notes="Fictional campus media partner.")
-            dev = Partner.objects.create(name="DevLoop Journal", notes="Fictional technology publication.")
+            workspace = Workspace.objects.create(name='CS Expo demo', created_by=coord)
+            for user in [coord, alex, sam]:
+                Account.objects.create(user=user, email=f'{user.username}@example.test', verified_at=timezone.now())
+                Membership.objects.create(workspace=workspace, user=user,
+                    role='coordinator' if user == coord else 'contributor')
+            campus = Partner.objects.create(workspace=workspace, name="Campus Current", notes="Fictional student news partner. Sample instructions only.")
+            signal = Partner.objects.create(workspace=workspace, name="Signal Student Network", notes="Fictional campus media partner.")
+            dev = Partner.objects.create(workspace=workspace, name="DevLoop Journal", notes="Fictional technology publication.")
             now = timezone.now().replace(second=0, microsecond=0)
 
             def requirement(partner, title, kind, slot, config, days, stage="pre", ambiguous=False):
@@ -59,7 +64,7 @@ class Command(BaseCommand):
             p2 = Package.objects.create(partner=signal, stage="pre", title="Social announcement", owner=alex)
             p3 = Package.objects.create(partner=dev, stage="pre", title="Developer spotlight", owner=sam)
             for p in [p1, p2, p3]:
-                audit(coord, "package.created", f"package:{p.id}", owner_id=p.owner_id, fictional=True)
+                audit(coord, "package.created", f"package:{p.id}", workspace=workspace, owner_id=p.owner_id, fictional=True)
             article = "CS Expo 2026\n" + " ".join(["Students build thoughtful software and share practical engineering lessons."] * 37)
             spotlight = "CS Expo 2026\n" + " ".join(["Student developers demonstrate useful projects and explain their engineering decisions."] * 23)
             store_asset(p1, alex, "article", SimpleUploadedFile("press-release.txt", article.encode()))

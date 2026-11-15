@@ -1,15 +1,14 @@
-# Small working increments
+# Release milestones
 
-Aim for a demonstrable local workflow in about two weeks of focused part-time work, then polish before internship applications. These are estimates, not commitments or measured completion times. The December 14, 2026 internship start leaves room to validate the project first.
+| Milestone | Exit evidence | Current scope |
+| --- | --- | --- |
+| Deterministic checks | Engine boundary tests | Included in full local suite |
+| Workspace/account foundation | Tenant isolation, verification, invitations, recovery and membership tests | Implemented and exercised locally |
+| Concurrent writes | PostgreSQL quota and last-coordinator races | Exercised on PostgreSQL 17.12 |
+| Existing data upgrade | Temporary schema-0001 migration rehearsal | Executed; IDs, paths and history retained |
+| Recovery | Encrypted paired restore and role/download checks | Executed for SQLite and PostgreSQL with local originals |
+| UI | Real account/workspace browser exercise at phone/tablet/desktop widths | Executed using local mailbox and fictional data |
+| Hosted staging | Vercel project + remote database/bucket/SMTP/scheduler | Not connected or deployed |
+| Public launch | Hosted acceptance exercise, off-site restore, monitoring, capacity and explicit approval | Blocked on external setup and rehearsal |
 
-| Milestone | Target effort | Demonstration / exit gate | State here |
-| --- | --- | --- | --- |
-| 1. Rules and data foundation | 2–3 sessions | Explain a rule, its boundary tests, four outcomes and the source link | Engine running; Django models written |
-| 2. Accounts and private packages | 2–3 sessions | Both roles can sign in; Sam cannot read Alex's report/file; uploads reject invalid content | Source and integration tests written; runtime pending |
-| 3. Requirements and reports | 2–3 sessions | Edit an instruction, retain old snapshot, refresh report, invalidate old manual decision | Source and integration tests written; runtime pending |
-| 4. Dashboard and demo polish | 1–2 sessions | Manila deadlines, orphan stages, responsive screens, five-minute walkthrough | UI source and capture script written; browser QA pending |
-| 5. CI, deployment and honest pilot | 2–3 sessions | Green SQLite/PostgreSQL CI, clean deployment, measured team exercise | Workflow, runbook and pilot protocol written; not executed |
-
-Do not add a frontend framework, AI extraction or another cloud service while a milestone's gate is still failing. Shipping the agreed workflow is stronger portfolio evidence than a larger unfinished feature list.
-
-The next session should run the Django tests on your computer, resolve any failures, and get both roles through one real local workflow. Only after that should we call the web MVP working. Freeze dependencies after a successful clean install, then verify the lockfile in a fresh environment.
+See `release-readiness.md` for current evidence and `deployment.md` for the release gate. Do not equate local tests, a workflow file or configuration with a green hosted deployment.

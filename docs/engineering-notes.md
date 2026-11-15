@@ -22,7 +22,7 @@ This is conservative: changing a source label or deadline also invalidates revie
 
 ## Why do authorization checks filter the database query?
 
-`visible_packages` returns all packages to coordinators and only owned packages to contributors. The same filter protects detail pages, JSON, upload, remove and download routes. Hiding a button would not prevent a direct HTTP request. A 404 for inaccessible package IDs also avoids revealing whether another contributor's package exists.
+`visible_packages` first restricts to a verified membership and selected workspace, then returns that workspace's packages to coordinators and only owned packages to contributors. The same filter protects detail pages, JSON, upload, remove and download routes. Hiding a button would not prevent a direct HTTP request. A 404 for inaccessible package IDs also avoids revealing whether another contributor's package exists.
 
 ## Why private attachments instead of public media URLs?
 
@@ -32,13 +32,13 @@ A public URL would bypass role checks and expose original documents. Files use r
 
 Database changes and audit events commit together. Package row locks coordinate writes in PostgreSQL. Filesystem storage is not part of a database transaction; new files are cleaned up on caught failures and old files are deleted after commit. A sudden process crash can still leave orphaned storage objects. Backups and reconciliation remain operational responsibilities.
 
-## Why no background jobs yet?
+## Why a durable email queue?
 
-Each package has four bounded slots. Checks operate on metadata extracted at upload, so synchronous refresh is straightforward. A task queue adds processes, retries and eventual-consistency UI states. I would add one after measuring slow uploads or report latency under a realistic workload.
+Verification, invitations and recovery need retries and should not wait for SMTP in the browser request. Mail jobs are stored in PostgreSQL and delivered by a worker or a protected external scheduler. Delivery can duplicate after a worker crash, while tokens remain single use. Synchronous file inspection is still bounded; requirement changes invalidate reports on the next authorized read rather than regenerating every package inside an edit.
 
 ## What can I honestly claim now?
 
-The pure Python engine passed the recorded automated tests, and its demo report was generated from actual fictional files. The Django workflow, CI and deployment are not yet runtime-verified in this workspace. No time savings, real omissions caught or pilot adoption has been measured. Add those claims only after collecting evidence.
+SQLite and PostgreSQL workflows, row-lock concurrency, account/token flows, tenant isolation and encrypted local recovery have execution evidence in `verification.md`. Browser signup, local mailbox verification and private workspace creation have also run. Vercel/cloud email/object storage, remote backups, Docker/proxy/TLS, CI and capacity need their own actual execution evidence. No real-team time savings, omissions caught or adoption is claimed.
 
 ## Practice changes to make yourself
 

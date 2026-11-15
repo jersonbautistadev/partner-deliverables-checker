@@ -1,8 +1,11 @@
 from django.urls import path
 
-from checker import views
+from checker import operations, views
 
 urlpatterns = [
+    path("ops/maintenance/", operations.maintenance, name="maintenance"),
+    path("ready/", operations.readiness, name="readiness"),
+    path("ops/mail/", operations.dispatch_mail, name="dispatch_mail"),
     path("", views.dashboard, name="dashboard"),
     path("partners/", views.partners, name="partners"),
     path("partners/new/", views.partner_new, name="partner_new"),

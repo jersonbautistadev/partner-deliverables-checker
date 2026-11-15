@@ -1,5 +1,7 @@
 {% extends 'base.html' %}
+{% block title %}{{ title }} | Partner Deliverables Checker{% endblock %}
 {% block content %}
-<a class="back" href="{% url 'dashboard' %}">← Overview</a><div class="page-heading"><div><p class="eyebrow">PARTNER DELIVERABLES</p><h1>{{ title }}</h1><p class="lede">{{ intro }}</p></div></div>
-<section class="panel form-panel"><form method="post">{% csrf_token %}{{ form.as_p }}<div class="actions"><button class="button" type="submit">Save changes →</button><a class="button secondary" href="{% url 'dashboard' %}">Cancel</a></div></form></section>
+<a class="back" href="{% url 'dashboard' %}">← Packages</a>
+<div class="page-heading"><div><h1>{{ title }}</h1>{% if intro %}<p class="lede">{{ intro }}</p>{% else %}<p class="lede">Add the details below. Complete the required fields to continue.</p>{% endif %}</div></div>
+<section class="panel form-panel"><form method="post">{% csrf_token %}{{ form.as_p }}<div class="actions"><button class="button" type="submit">{% if title == 'New submission package' %}Create package{% else %}Save changes{% endif %}</button><a class="button secondary" href="{% url 'dashboard' %}">Cancel</a></div></form></section>
 {% endblock %}

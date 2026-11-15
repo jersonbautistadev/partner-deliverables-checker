@@ -1,0 +1,5 @@
+-r requirements.in
+-c requirements.lock
+ruff>=0.11,<1
+coverage>=7.6,<8
+pip-audit>=2.10,<3

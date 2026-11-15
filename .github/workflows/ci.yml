@@ -1,4 +1,4 @@
-name: Quality checks
+name: Quality and release checks
 on:
   push:
   pull_request:
@@ -26,24 +26,66 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
-      - run: python -m pip install -r requirements-dev.txt
-      - run: ruff check .
+          cache-dependency-path: requirements-dev.lock
+      - run: python -m pip install --require-hashes -r requirements-dev.lock
+      - run: python -m ruff check .
       - run: python manage.py check
       - run: python manage.py makemigrations --check --dry-run
       - run: coverage run --source=checker manage.py test --verbosity 2
       - run: coverage report -m
-      - name: Test database workflow against PostgreSQL
-        run: python manage.py test checker --verbosity 2
+      - run: python -m pip_audit -r requirements.lock --disable-pip --no-deps
+      - name: PostgreSQL client wrappers for isolated recovery tests
+        run: |
+          mkdir -p .runtime
+          for command in pg_dump pg_restore; do
+            cat > ".runtime/$command" <<'SH'
+          #!/bin/sh
+          command=$(basename "$0")
+          exec docker run --rm --network host -v /tmp:/tmp -e PGPASSWORD -e PGSSLMODE postgres:17-alpine "$command" "$@"
+          SH
+            chmod +x ".runtime/$command"
+          done
+      - name: Full PostgreSQL tests, row-lock races and encrypted restore
+        run: python manage.py test --verbosity 2
         env:
+          POSTGRES_HOST: localhost
+          POSTGRES_PORT: "5432"
+          POSTGRES_USER: deliverables
+          POSTGRES_PASSWORD: ci-only-password
+          POSTGRES_DB: deliverables
+          PG_DUMP: .runtime/pg_dump
+          PG_RESTORE: .runtime/pg_restore
+      - run: python manage.py collectstatic --noinput
+      - name: Production configuration checks (fixture settings)
+        run: python manage.py check --deploy --fail-level WARNING
+        env:
+          DJANGO_DEBUG: "0"
+          DJANGO_SECRET_KEY: ci-only-key-with-enough-length-and-entropy-for-deploy-checks-729c6e25
+          DJANGO_ALLOWED_HOSTS: staging.example.test
+          CSRF_TRUSTED_ORIGINS: https://staging.example.test
+          PUBLIC_BASE_URL: https://staging.example.test
           POSTGRES_HOST: localhost
           POSTGRES_USER: deliverables
           POSTGRES_PASSWORD: ci-only-password
           POSTGRES_DB: deliverables
-      - run: python manage.py collectstatic --noinput
-      - name: Check production settings
-        run: python manage.py check --deploy --fail-level WARNING
+          EMAIL_HOST: smtp.example.test
+          DEFAULT_FROM_EMAIL: noreply@example.test
+          OPS_SECRET: ci-only-operations-secret-not-a-production-key
+      - name: Container build and Compose configuration
         env:
-          DJANGO_DEBUG: "0"
-          DJANGO_SECRET_KEY: ci-only-key-with-enough-length-and-entropy-for-django-deploy-check-729c6e25
-          DJANGO_ALLOWED_HOSTS: demo.example.com
-          CSRF_TRUSTED_ORIGINS: https://demo.example.com
+          DJANGO_SECRET_KEY: ci-only-key-with-enough-length-and-entropy-for-deploy-checks-729c6e25
+          DJANGO_ALLOWED_HOSTS: staging.example.test
+          CSRF_TRUSTED_ORIGINS: https://staging.example.test
+          POSTGRES_DB: deliverables
+          POSTGRES_USER: deliverables
+          POSTGRES_PASSWORD: ci-only-password
+          APP_DOMAIN: staging.example.test
+          EMAIL_HOST: smtp.example.test
+          DEFAULT_FROM_EMAIL: noreply@example.test
+          OPS_SECRET: ci-only-operations-secret-not-a-production-key
+          EMAIL_HOST_USER: fixture
+          EMAIL_HOST_PASSWORD: fixture
+          BACKUP_ENCRYPTION_KEY: fixture-not-used-by-build
+        run: |
+          docker compose --profile operations config --quiet
+          docker compose --profile operations build app worker backup
