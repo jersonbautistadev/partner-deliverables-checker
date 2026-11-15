@@ -29,3 +29,7 @@ Recorded 15 November 2026 (Asia/Manila). This replaces the obsolete October reco
 Final logs are ignored local artifacts: `.runtime/final-sqlite-tests.log` and `.runtime/final-postgres-tests.log`. Runtime downloads, test mail, databases, fixtures and the local pre-migration SQLite snapshot are excluded from deployment artifacts. Screenshots were inspected from Orca's temporary directory; they are not durable release artifacts.
 
 See [deployment](deployment.md), [operations](operations.md) and [release gates](release-readiness.md). Repeat hosted acceptance and record the deployed revision before public approval.
+
+## Vercel dependency-discovery correction
+
+The user supplied a real Vercel CLI 65.14.0 build log for commit `876decc`. It failed before Django settings discovery: Vercel selected the tool-only `pyproject.toml` and installed no Django dependency. Removed that ambiguous manifest, moved lint configuration to `ruff.toml`, and retained automatic `manage.py`/WSGI entrypoint discovery. A fresh Python 3.12 environment installed all 23 runtime packages from `requirements.txt` using hashes; Django system checks, static collection and Ruff passed. These local results address the reported import failure; a successful hosted rebuild remains unverified. Earlier table entries describe the local-verification cutoff before the user's deployment attempt.

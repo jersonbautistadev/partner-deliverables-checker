@@ -15,7 +15,8 @@ Official references: [Django on Vercel](https://vercel.com/docs/frameworks/full-
 
 ## Configure and build
 
-- Import this repository; use the Django preset. `manage.py`, `WSGI_APPLICATION`, `.python-version` and `tool.vercel.entrypoint` identify the Python 3.12 app.
+- Import this repository; use the Django preset. `manage.py`, `WSGI_APPLICATION` and `.python-version` identify the Python 3.12 app without a custom entrypoint.
+- Keep Ruff configuration in `ruff.toml`. A tool-only `pyproject.toml` caused Vercel CLI 65.14.0 to select an empty dependency manifest instead of `requirements.txt`, resulting in `ModuleNotFoundError: django`. The repository uses `requirements.txt` and its hash lock as the runtime dependency source.
 - Install from `requirements.txt`, which includes the hash-locked `requirements.lock`. The lock was resolved for Python 3.12/Linux; a real Vercel build is still required.
 - Vercel automatically collects `STATIC_ROOT` and serves it at `STATIC_URL`. WhiteNoise remains useful locally/Compose.
 - Set production variables from `.env.example` through the platform's secret store. Set `DJANGO_DEBUG=0`, exact hostname(s), matching HTTPS `PUBLIC_BASE_URL` and CSRF origin, random Django/operations secrets, database URL, private-storage settings and SMTP sender/credentials. Choose exactly one SMTP TLS mode.
