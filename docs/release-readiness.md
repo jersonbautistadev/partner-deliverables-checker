@@ -1,6 +1,6 @@
 # Public release readiness
 
-Recorded 15 November 2026. Local implementation and verification are finished for this release candidate. **Supabase services and Vercel settings are configured; hosted rebuild/account acceptance is pending and public launch remains blocked.** This is execution evidence, not a security certification.
+Recorded 15 November 2026. Local implementation and verification are finished for this release candidate. **Vercel build and database/storage health are verified; email/account acceptance is pending and public launch remains blocked.** This is execution evidence, not a security certification.
 
 ## Prioritized gaps and resolution
 
@@ -29,9 +29,9 @@ Full timings, commands and limitations: [verification](verification.md).
 
 | Blocker | Impact | Required input/action |
 | --- | --- | --- |
-| Vercel hosted acceptance | Project and production variables are configured; successful rebuild and HTTPS/function behavior remain unverified. | Rebuild with the provider CA/path-style changes and exercise hosted routes and account flows. |
+| Hosted account acceptance | Vercel built/promoted the provider-configured release; HTTPS sign-in, health/readiness and CSS passed. | Complete real email, tenant/account/file workflows and operational acceptance before public launch. |
 | Hosted database workflows | Supabase migrations, separate roles, transaction-pooler reads and verified TLS passed. | Exercise tenant/account workflows through the deployed application and rehearse remote recovery. |
-| Hosted file workflows | Supabase private-bucket write/read/delete, signed attachment download and unsigned/public denial passed. | Verify the deployed upload/download/replacement flows and signed-link expiry. |
+| Hosted file workflows | Provider write/read/delete, private flag, signed attachment, expiry mechanism and public denial passed. | Verify authenticated upload/download/replacement through the deployed application after account email is available. |
 | SMTP and mail scheduler | Onboarding/recovery cannot reliably deliver messages. | Configure verified sender/SMTP; approve real-recipient testing. Enable a worker/dispatcher and measure receipt/retries/queue age. Included Actions dispatcher is disabled and five-minute scheduling is best effort. |
 | External backup runner/destination | Local restore is not disaster recovery. | Choose an encrypted off-site destination and trusted runner, store the separate encryption key securely, schedule backups and restore into an isolated remote database/bucket. |
 | Monitoring/policy/capacity | Hosted failures and operator response unverified. | Configure alert destination; publish support/retention rules; test readiness/mail/storage/backup alerts, HTTPS and expected concurrency. |

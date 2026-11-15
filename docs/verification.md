@@ -1,6 +1,6 @@
 # Verification record
 
-Recorded 15 November 2026 (Asia/Manila). This replaces the obsolete October record. Results describe this checkout, not a deployed public service.
+Recorded 15 November 2026 (Asia/Manila). This replaces the obsolete October record. Local and hosted evidence are distinguished below. The latest hosted checkpoint is at the end; earlier results are retained as history.
 
 | Check actually executed | Result and scope |
 | --- | --- |
@@ -22,7 +22,7 @@ Recorded 15 November 2026 (Asia/Manila). This replaces the obsolete October reco
 | Browser execution | Orca performed signup, queued file-mail delivery, POST verification, sign-in, workspace creation, invitation issuance/acceptance and password reset followed by new-password sign-in, and authenticated password change. Only fictional example.test recipients. |
 | Responsive/keyboard review | Inspected actual screenshots at 390px phone, 768px tablet and 1440px desktop. Checked keyboard account menu, visible focus, errors, empty workspaces and role navigation. Browser workspace switching also changed the same user between contributor and coordinator permissions. A rendered 320px long-name stress case had document width 320px; it changed no persistent data. |
 | Contrast spot check | Body/paper 14.46:1, metadata/paper 5.38:1, accent/white 7.29:1; status pairs 5.49?6.40:1, input border/white 3.05:1. Not a complete WCAG or assistive-technology audit. |
-| CI/hosted deployment | **Not executed:** no push, remote CI, Vercel deployment, real-user mail, live bucket permission test, hosted load test or public launch. |
+| CI/hosted deployment | The initial local checkpoint preceded Git pushes and deployment. See the hosted checkpoint below for current Vercel/provider evidence. Remote CI results have not been reviewed; hosted load, real-user email and public-launch acceptance remain unverified. |
 | Docker/proxy/TLS | **Not built/run:** Docker is absent. Native PostgreSQL does not substitute for the optional Compose rehearsal. |
 | Pilot measurements | Not collected. |
 
@@ -47,3 +47,13 @@ Django S3 storage successfully wrote, located and read back a synthetic object. 
 All 107 SQLite tests passed in 85.500 seconds, with three PostgreSQL-only skips. This includes a new provider CA/path-style regression. The previous 106-test native PostgreSQL run remains the full concurrency/recovery evidence; it was not rerun for this provider configuration change. Actual provider connections/storage were exercised separately as described above.
 
 Vercel production variables were saved through its dashboard, including the least-privilege runtime database URL, private-storage credentials and provider settings. A successful hosted rebuild and account email delivery are still pending at this checkpoint. Generated credentials are encrypted in ignored local recovery files; they are not in this record or Git.
+
+## Hosted checkpoint: Vercel and Supabase
+
+Vercel successfully built commit `171a45b` in 20 seconds. An older redeployment briefly took the canonical URL; the new deployment (`3Fs2zSzdUJA36QFhkQH3ortA726o`) was then explicitly promoted and the dashboard reported `Deployment promoted`. The canonical HTTPS origin is https://partner-deliverables-checker-puux.vercel.app. Actual public requests returned 200 for `/health/`, `/ready/` and `/accounts/login/`; health/readiness JSON reported `ok` and `ready`. HSTS was present. Collected CSS returned 200 with the application design tokens.
+
+The live sign-in page was inspected in Orca at phone (390px), tablet (768px) and desktop (1200px) widths. At 1440px, DOM measurements showed one header/brand/footer and no horizontal document overflow; the browser screenshot capture repeated a right-edge strip, so the clean desktop visual check used 1200px rather than treating that capture artifact as an application defect.
+
+Provider policy checks confirmed the bucket is private with a 3,145,728-byte file cap, and anonymous/authenticated Supabase Data API roles have no DML grants on Django tables. Normal signed URLs request 60-second expiry. A separate three-second signed URL downloaded successfully before expiration, then was denied with HTTP 400 while its object still existed. Supabase's expiry rejection uses 400 here, rather than the initially expected 403. Generated rehearsal objects were removed.
+
+Gmail was selected for initial email testing, but the account's App passwords page was unavailable because 2-Step Verification was off. The owner was handed the Google setup page to enable it privately. No Google password, app password or verification code has been collected, and no real-recipient email test has run. The mail-dispatch workflow remains disabled. Passing service readiness does not verify email delivery, account acceptance, load/capacity, monitoring or off-site recovery; those remain release gates.
