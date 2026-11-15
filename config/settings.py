@@ -189,6 +189,8 @@ if os.environ.get("DATABASE_URL"):
         database_options["sslmode"] = "require"
     DATABASES["default"]["DISABLE_SERVER_SIDE_CURSORS"] = True
     database_options.update(connect_timeout=10, prepare_threshold=None)
+    if os.environ.get("DATABASE_SSL_ROOT_CERT"):
+        database_options["sslrootcert"] = str(BASE_DIR / os.environ["DATABASE_SSL_ROOT_CERT"])
 if os.environ.get("PRIVATE_S3_BUCKET"):
     STORAGES["default"] = {
         "BACKEND": "storages.backends.s3.S3Storage",
@@ -205,6 +207,7 @@ if os.environ.get("PRIVATE_S3_BUCKET"):
             "file_overwrite": False,
             "custom_domain": None,
             "signature_version": "s3v4",
+            "addressing_style": os.environ.get("PRIVATE_S3_ADDRESSING_STYLE", "auto"),
             "object_parameters": {"CacheControl": "private, no-store"},
         },
     }

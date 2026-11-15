@@ -37,3 +37,13 @@ The user supplied a real Vercel CLI 65.14.0 build log for commit `876decc`. It f
 ## Self-contained Vercel requirements
 
 The subsequent user-provided Vercel CLI 65.14.0 build log for `c0e88a4` failed while resolving `-r requirements.lock`. Replaced that include with a byte-identical, self-contained copy of the runtime lock in `requirements.txt`; package versions and hashes are unchanged. Added a CI equality check to prevent drift after lock updates. Executed the published `@vercel/python-analysis` 0.15.3 parser locally: an include without a file resolver reproduced the included-file error, while the self-contained file parsed all 23 requirements, including Django, with hashes. Hash-enforced uv installation, Django checks, static collection and Ruff passed locally. This parser exercise is not a complete Vercel CLI build; hosted rebuild success remains unverified.
+
+## Supabase provisioning and private-service verification
+
+Created a Supabase Free organization/project and a private bucket with no real user documents. Supabase Data API was disabled at creation. Separate migration/runtime roles were created, and Django migrations completed through the session pooler. The runtime transaction-pooler connection passed authentication, TLS and certificate/hostname verification; it read Django tables and had no superuser, role/database-creation or public-schema-creation privileges. The account count at this check was zero.
+
+Django S3 storage successfully wrote, located and read back a synthetic object. A signed attachment URL returned the original bytes with attachment disposition; unsigned S3 and public-object endpoint requests were denied. Only the generated rehearsal object was removed afterward. The S3 addressing mode is configurable for Supabase's path-style endpoint. The bundled public CA came from the certificate URL in Supabase Studio's official source.
+
+All 107 SQLite tests passed in 85.500 seconds, with three PostgreSQL-only skips. This includes a new provider CA/path-style regression. The previous 106-test native PostgreSQL run remains the full concurrency/recovery evidence; it was not rerun for this provider configuration change. Actual provider connections/storage were exercised separately as described above.
+
+Vercel production variables were saved through its dashboard, including the least-privilege runtime database URL, private-storage credentials and provider settings. A successful hosted rebuild and account email delivery are still pending at this checkpoint. Generated credentials are encrypted in ignored local recovery files; they are not in this record or Git.

@@ -14,6 +14,39 @@ from checker.backup import decrypt, encrypt
 
 
 class RecoveryTests(SimpleTestCase):
+    def test_provider_ca_and_s3_path_style_reach_client_configuration(self):
+        env = os.environ.copy()
+        env.pop("VERCEL", None)
+        env.pop("VERCEL_ENV", None)
+        env.update(
+            DJANGO_DEBUG="1",
+            DATABASE_URL="postgresql://fixture:fixture@localhost/fixture?sslmode=verify-full",
+            DATABASE_SSL_ROOT_CERT="deploy/supabase-root-ca.crt",
+            PRIVATE_S3_BUCKET="fixture-private",
+            PRIVATE_S3_ACCESS_KEY="fixture",
+            PRIVATE_S3_SECRET_KEY="fixture",
+            PRIVATE_S3_ENDPOINT_URL="https://fixture.storage.supabase.co/storage/v1/s3",
+            PRIVATE_S3_ADDRESSING_STYLE="path",
+        )
+        code = (
+            "import os; os.environ.setdefault('DJANGO_SETTINGS_MODULE','config.settings'); "
+            "import django; django.setup(); "
+            "from django.conf import settings; from pathlib import Path; "
+            "from django.core.files.storage import default_storage; "
+            "from urllib.parse import urlsplit; "
+            "assert settings.DATABASES['default']['OPTIONS']['sslmode']=='verify-full'; "
+            "assert Path(settings.DATABASES['default']['OPTIONS']['sslrootcert'])"
+            "==settings.BASE_DIR/'deploy/supabase-root-ca.crt'; "
+            "assert default_storage.connection.meta.client.meta.config.s3['addressing_style']=='path'; "
+            "u=urlsplit(default_storage.url('probe.txt')); "
+            "assert u.hostname=='fixture.storage.supabase.co'; "
+            "assert u.path=='/storage/v1/s3/fixture-private/originals/probe.txt'"
+        )
+        result = subprocess.run(
+            [sys.executable, "-c", code], env=env, capture_output=True, text=True
+        )
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
     def test_database_url_enforces_tls_without_downgrading_verification(self):
         env = os.environ.copy()
         env.pop("VERCEL", None)

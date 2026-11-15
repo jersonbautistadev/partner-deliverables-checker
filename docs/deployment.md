@@ -1,6 +1,6 @@
 # Deployment runbook
 
-Requested target: **Vercel**, with an optional Linux Compose alternative. Neither hosted target has been deployed from this workspace. See `release-readiness.md` for actual execution evidence.
+Requested target: **Vercel**, with an optional Linux Compose alternative. Supabase-backed staging configuration has begun; see the current verification record for hosted build results. See `release-readiness.md` for actual execution evidence.
 
 ## Vercel prerequisites
 
@@ -71,3 +71,15 @@ Schedule `sh deploy/backup.sh` from the repository on the host. It stops app/mai
 `/health/` is process liveness. `/ready/` checks database access, storage reachability and pending mail older than fifteen minutes, returning only ready/unavailable. Storage reachability is not a proof of bucket privacy, write permission or available quota. Monitor provider database connections, object storage/volume usage, CPU/latency, email failures, queue age and backup age separately.
 
 A missing/failed mail scheduler blocks public onboarding. Five-message batches may be insufficient during bursts; measure and provision a suitable scheduler rather than assuming free capacity. Hosted deployment, email, storage policy, backup destination and alert delivery remain external launch gates until configured and rehearsed.
+
+## Supabase-backed configuration
+
+Use a dedicated Free project for PostgreSQL and private S3-compatible storage. The current setup uses North Virginia, a private `private-deliverables` bucket, and separate `pdc_migrator` and `pdc_web` login roles. Disable the Supabase Data API for Django-owned tables. Do not expose Django tables through anonymous Data API grants. The runtime role receives table DML and sequence privileges, without schema creation or administrator capabilities; future migrations must use the migration role so its default grants reach new tables.
+
+For migrations, use the dashboard's actual session-pooler host on port 5432. For Vercel, use the transaction pooler on port 6543 and the `pdc_web.PROJECT_REF` username. Copy the actual host from Connect; do not guess a pooler cluster index. Keep prepared statements and server-side cursors disabled as configured.
+
+Set `sslmode=verify-full` in the database URL and `DATABASE_SSL_ROOT_CERT=deploy/supabase-root-ca.crt`. The bundled public CA and its provenance are documented in `deploy/supabase-root-ca.md`. Configure `PRIVATE_S3_ADDRESSING_STYLE=path`, and copy the S3 endpoint/region from Storage > S3. Keep the bucket private and the S3 keys only in server secrets. Supabase's S3 keys cover all buckets in that project and bypass RLS, so dedicate the project to this application.
+
+Credentials generated during local provisioning have Windows-user-encrypted recovery copies under ignored `.local-backups/`. These are not portable/off-site backups and must not be committed. Use the account owner's secure credential store for operational recovery. PostgreSQL migrations do not import the local demo database.
+
+The Free plan can pause after a week of inactivity and has storage/transfer/database limits. This setup is a staging step, not proof of public-service capacity, email delivery, monitoring or off-site recovery.

@@ -4,7 +4,7 @@ A Django application for teams coordinating event media partnerships. It checks 
 
 ## Release status
 
-Public-account and workspace features are implemented. Local tests cover SQLite and PostgreSQL, account flows, isolation, quotas, concurrent changes, and encrypted recovery. The production Vercel project and external services have **not** been connected or deployed. See [release evidence and remaining gates](docs/release-readiness.md) and [verification](docs/verification.md). Passing local tests is not evidence of a working hosted deployment.
+Public-account and workspace features are implemented. Local tests cover SQLite and PostgreSQL, account flows, isolation, quotas, concurrent changes, and encrypted recovery. Supabase database/private storage and Vercel settings have been configured; hosted acceptance and email delivery remain release gates. See [release evidence and remaining gates](docs/release-readiness.md) and [verification](docs/verification.md). Passing local tests is not evidence of a working hosted deployment.
 
 The UI retains the editorial layout, responsive worklist, source-linked findings, and accessible native forms. New accounts create a private workspace or accept an invitation. Roles are per workspace: a person can coordinate one team and contribute to another.
 
