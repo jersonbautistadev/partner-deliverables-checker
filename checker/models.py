@@ -89,6 +89,11 @@ class MailJob(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
 
+class ServiceHeartbeat(models.Model):
+    name = models.CharField(max_length=32, primary_key=True)
+    last_seen = models.DateTimeField()
+
+
 class RateBucket(models.Model):
     key = models.CharField(max_length=64)
     window = models.BigIntegerField()

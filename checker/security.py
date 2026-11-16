@@ -1,3 +1,4 @@
+import math
 import time
 from datetime import timedelta
 from functools import wraps
@@ -17,9 +18,14 @@ class LimitExceeded(ValidationError):
     pass
 
 
-def consume_limit(identity, limit, seconds):
+def consume_limit_wait(identity, limit, seconds, *, consume=True):
+    """Return zero or seconds until reset; optionally inspect without consuming an attempt."""
     key = salted_hmac("rate-bucket", identity, algorithm="sha256").hexdigest()
-    window = int(time.time()) // seconds
+    now = time.time()
+    window = int(now) // seconds
+    wait = max(1, math.ceil((window + 1) * seconds - now))
+    if not consume:
+        return wait if RateBucket.objects.filter(key=key, window=window, count__gte=limit).exists() else 0
     with transaction.atomic():
         bucket, _ = RateBucket.objects.get_or_create(
             key=key,
@@ -28,10 +34,14 @@ def consume_limit(identity, limit, seconds):
         )
         bucket = RateBucket.objects.select_for_update().get(pk=bucket.pk)
         if bucket.count >= limit:
-            return False
+            return wait
         bucket.count += 1
         bucket.save(update_fields=["count"])
-    return True
+    return 0
+
+
+def consume_limit(identity, limit, seconds):
+    return consume_limit_wait(identity, limit, seconds) == 0
 
 
 def workspace_write(view):

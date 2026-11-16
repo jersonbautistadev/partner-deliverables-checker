@@ -43,7 +43,7 @@ jobs:
             cat > ".runtime/$command" <<'SH'
           #!/bin/sh
           command=$(basename "$0")
-          exec docker run --rm --network host -v /tmp:/tmp -e PGPASSWORD -e PGSSLMODE postgres:17-alpine "$command" "$@"
+          exec docker run --rm --network host -v /tmp:/tmp -v "$PWD:$PWD:ro" -e PGPASSWORD -e PGSSLMODE -e PGSSLROOTCERT postgres:17-alpine "$command" "$@"
           SH
             chmod +x ".runtime/$command"
           done

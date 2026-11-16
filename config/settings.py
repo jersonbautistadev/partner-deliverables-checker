@@ -157,6 +157,7 @@ UPLOAD_MAX_BYTES = int(
     )
 )
 MAIL_MAX_ATTEMPTS = 6
+MAIL_HEALTH_MAX_AGE_SECONDS = max(60, int(os.environ.get("MAIL_HEALTH_MAX_AGE_SECONDS", "900")))
 OPS_SECRET = os.environ.get("OPS_SECRET", "")
 LOGGING = {
     "version": 1,

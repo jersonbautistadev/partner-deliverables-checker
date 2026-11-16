@@ -7,7 +7,7 @@ from django.core.mail.backends.base import BaseEmailBackend
 from django.db import connection, transaction
 from django.utils import timezone
 
-from checker.models import MailJob
+from checker.models import MailJob, ServiceHeartbeat
 
 logger = logging.getLogger(__name__)
 
@@ -70,4 +70,7 @@ def deliver_batch(limit=10):
                 job.recipient = ""
                 sent += 1
             job.save()
+    # Even an idle dispatcher must demonstrate that its scheduler is still running.
+    # This records activity; queue age/exhausted jobs separately signal delivery failures.
+    ServiceHeartbeat.objects.update_or_create(name="mail", defaults={"last_seen": timezone.now()})
     return sent

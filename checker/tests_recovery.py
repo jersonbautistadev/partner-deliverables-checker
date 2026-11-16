@@ -4,16 +4,41 @@ from pathlib import Path
 import subprocess
 import sys
 import tempfile
+from types import SimpleNamespace
 from unittest.mock import patch
 from unittest import skipUnless
 
 from cryptography.exceptions import InvalidTag
 from django.test import SimpleTestCase
 
-from checker.backup import decrypt, encrypt
+from checker.backup import decrypt, encrypt, pg_environment
 
 
 class RecoveryTests(SimpleTestCase):
+    def test_backup_clients_use_configured_ca_and_preserve_verification(self):
+        database = {
+            "HOST": "database.example.test", "USER": "backup", "PASSWORD": "fixture",
+            "OPTIONS": {"sslmode": "verify-full", "sslrootcert": Path("/fixture/provider.crt")},
+        }
+        with (
+            patch("checker.backup.settings", SimpleNamespace(DATABASES={"default": database})),
+            patch.dict(os.environ, {"PGSSLROOTCERT": "/wrong/inherited.crt"}, clear=True),
+        ):
+            env, args = pg_environment()
+        self.assertEqual(env["PGSSLROOTCERT"], str(Path("/fixture/provider.crt")))
+        self.assertEqual(env["PGSSLMODE"], "verify-full")
+        self.assertIn("database.example.test", args)
+        self.assertNotIn("fixture", args)
+
+    def test_backup_clients_allow_libpq_ca_when_not_overridden(self):
+        database = {"USER": "backup", "OPTIONS": {"sslmode": "verify-full"}}
+        with (
+            patch("checker.backup.settings", SimpleNamespace(DATABASES={"default": database})),
+            patch.dict(os.environ, {"PGSSLROOTCERT": "/fixture/runner.crt"}, clear=True),
+        ):
+            env, _ = pg_environment()
+        self.assertEqual(env["PGSSLROOTCERT"], "/fixture/runner.crt")
+
     def test_provider_ca_and_s3_path_style_reach_client_configuration(self):
         env = os.environ.copy()
         env.pop("VERCEL", None)

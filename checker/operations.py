@@ -1,4 +1,5 @@
 import secrets
+import logging
 
 from django.conf import settings
 from django.core.files.storage import default_storage
@@ -9,22 +10,44 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_POST
 
 from checker.mail import deliver_batch
-from checker.models import MailJob
+from checker.models import MailJob, ServiceHeartbeat
+
+logger = logging.getLogger(__name__)
 
 
 @require_GET
 def readiness(request):
+    dependency = "database"
     try:
         with connection.cursor() as cursor:
             cursor.execute("SELECT 1")
             cursor.fetchone()
+        dependency = "storage"
         default_storage.exists(".readiness-probe")
+        now = timezone.now()
+        if not settings.DEBUG:
+            from checker.checks import mail_configured
+
+            dependency = "mail_configuration"
+            if not mail_configured():
+                raise RuntimeError("mail unconfigured")
+            dependency = "mail_dispatcher"
+            if not ServiceHeartbeat.objects.filter(
+                name="mail",
+                last_seen__gte=now - timezone.timedelta(seconds=settings.MAIL_HEALTH_MAX_AGE_SECONDS),
+            ).exists():
+                raise RuntimeError("mail dispatcher unavailable")
+        dependency = "mail_queue"
         stale = MailJob.objects.filter(
-            sent_at__isnull=True, created_at__lt=timezone.now() - timezone.timedelta(minutes=15)
+            sent_at__isnull=True, created_at__lt=now - timezone.timedelta(seconds=settings.MAIL_HEALTH_MAX_AGE_SECONDS)
         ).exists()
-        if stale:
+        exhausted = MailJob.objects.filter(
+            sent_at__isnull=True, attempts__gte=settings.MAIL_MAX_ATTEMPTS
+        ).exists()
+        if stale or exhausted:
             raise RuntimeError("mail worker unavailable")
     except Exception:
+        logger.warning("readiness_unavailable dependency=%s", dependency)
         return JsonResponse({"status": "unavailable"}, status=503)
     return JsonResponse({"status": "ready"})
 

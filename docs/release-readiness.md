@@ -1,5 +1,7 @@
 # Public release readiness
 
+Current decision: [16 November 2026 dev-team fixes](dev-team-fixes-2026-11-16.md) resolves the repository findings from the [audit](dev-team-audit-2026-11-16.md), with fresh 120-test SQLite/PostgreSQL results. Suitable for staging review; public launch remains blocked on email, managed recovery, monitoring and hosted acceptance. The checkpoint below retains earlier totals and its changed-file inventory as history.
+
 Recorded 15 November 2026. Local implementation and verification are finished for this release candidate. **Vercel build and database/storage health are verified; email/account acceptance is pending and public launch remains blocked.** This is execution evidence, not a security certification.
 
 ## Prioritized gaps and resolution

@@ -1,5 +1,7 @@
 # Verification record
 
+Latest implementation evidence: [16 November 2026 dev-team fixes](dev-team-fixes-2026-11-16.md), following the [audit](dev-team-audit-2026-11-16.md). Fresh-runtime SQLite and native PostgreSQL suites each ran 120 tests successfully; live email, managed recovery and hosted acceptance remain launch gates. Earlier checkpoints below remain historical evidence.
+
 Recorded 15 November 2026 (Asia/Manila). This replaces the obsolete October record. Local and hosted evidence are distinguished below. The latest hosted checkpoint is at the end; earlier results are retained as history.
 
 | Check actually executed | Result and scope |

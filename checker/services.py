@@ -18,6 +18,7 @@ from checker.models import (
     Workspace,
 )
 from checker.security import LimitExceeded, consume_limit, storage_used
+from checker.storage import file_exists
 from django.conf import settings
 
 
@@ -77,7 +78,7 @@ def current_inputs(package):
             "sha256": a.sha256,
             "size": a.size,
             "metadata": a.metadata,
-            "available": a.file.storage.exists(a.file.name),
+            "available": file_exists(a.file),
         }
         for a in package.assets.order_by("slot")
     ]

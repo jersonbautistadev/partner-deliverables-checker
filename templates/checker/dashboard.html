@@ -3,13 +3,17 @@
 {% block content %}
 <div class="page-heading"><div><h1>Packages</h1><p class="lede">{% if coordinator %}Team submission worklist{% else %}Your submission worklist{% endif %}</p></div><a class="button" href="{% url 'package_new' %}">Create package</a></div>
 <dl class="summary-strip" aria-label="Workspace summary">
-  <div><dt>Need action</dt><dd>{{ incomplete }}</dd></div><div><dt>Ready</dt><dd>{{ ready_count }}</dd></div><div><dt>Findings to review</dt><dd>{{ review_count }}</dd></div><div><dt>Partners</dt><dd>{{ partner_count }}</dd></div>
+  <div><dt>Need attention</dt><dd>{{ incomplete }}</dd></div><div><dt>Passed last check</dt><dd>{{ ready_count }}</dd></div><div><dt>Findings to review</dt><dd>{{ review_count }}</dd></div><div><dt>Partners</dt><dd>{{ partner_count }}</dd></div>
 </dl>
+<p class="section-note worklist-note">Summaries show the last report. Open a report to check current files and requirements.{% if needs_report_count %} {{ needs_report_count }} package{{ needs_report_count|pluralize }} need{{ needs_report_count|pluralize:'s,' }} a current report.{% endif %}</p>
 <div class="dashboard-grid">
   <div class="worklist">
-    <section aria-labelledby="action-title"><div class="section-heading"><h2 id="action-title">Needs action <span class="count">{{ action_cards|length }}</span></h2></div>
-    {% for card in action_cards %}{% include 'checker/package_row.html' %}{% empty %}<div class="empty"><h3>{% if cards %}No packages need action{% else %}No packages yet{% endif %}</h3><p>{% if cards %}All visible packages pass their configured checks.{% else %}Create a package, select a partner and stage, then upload its files.{% endif %}</p></div>{% endfor %}</section>
-    {% if ready_cards %}<section class="ready-section" aria-labelledby="ready-title"><div class="section-heading"><h2 id="ready-title">Ready for submission <span class="count">{{ ready_cards|length }}</span></h2></div>{% for card in ready_cards %}{% include 'checker/package_row.html' %}{% endfor %}<p class="section-note">Ready means all configured checks passed. Delivery happens outside this app.</p></section>{% endif %}
+    <section aria-labelledby="action-title"><div class="section-heading"><h2 id="action-title">Needs attention <span class="count">{{ action_page.paginator.count }}</span></h2></div>
+    {% for card in action_cards %}{% include 'checker/package_row.html' %}{% empty %}<div class="empty"><h3>{% if cards %}No unresolved findings in the last reports{% else %}No packages yet{% endif %}</h3><p>{% if cards %}All visible packages passed their last checks. Open a report before preparing a submission.{% else %}Create a package, select a partner and stage, then upload its files.{% endif %}</p></div>{% endfor %}
+    {% include 'checker/worklist_pagination.html' with page=action_page page_key='action_page' other_page=ready_page other_key='ready_page' section_id='action-title' label='Packages needing attention' %}</section>
+    {% if ready_cards %}<section class="ready-section" aria-labelledby="ready-title"><div class="section-heading"><h2 id="ready-title">Passed last check <span class="count">{{ ready_page.paginator.count }}</span></h2></div>{% for card in ready_cards %}{% include 'checker/package_row.html' %}{% endfor %}
+    {% include 'checker/worklist_pagination.html' with page=ready_page page_key='ready_page' other_page=action_page other_key='action_page' section_id='ready-title' label='Packages that passed' %}
+    <p class="section-note">All configured checks passed at the time shown. This does not record delivery.</p></section>{% endif %}
     {% if missing_stages %}<section class="supplement"><h2>Stages without {% if not coordinator %}one of your{% endif %} packages</h2>{% for r in missing_stages %}<p><a href="{% url 'requirement_detail' r.id %}">{{ r.partner.name }} / {{ r.get_stage_display }}</a> <span class="meta">No visible package</span></p>{% endfor %}</section>{% endif %}
   </div>
   <aside class="deadlines" aria-labelledby="deadlines-title"><h2 id="deadlines-title">Requirement deadlines</h2><p class="meta">Asia/Manila</p>

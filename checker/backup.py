@@ -77,6 +77,9 @@ def pg_environment():
         PGPASSWORD=db.get("PASSWORD", ""),
         PGSSLMODE=db.get("OPTIONS", {}).get("sslmode", "prefer"),
     )
+    root_cert = db.get("OPTIONS", {}).get("sslrootcert")
+    if root_cert is not None:
+        env["PGSSLROOTCERT"] = str(root_cert)
     args = [
         "-h",
         db.get("HOST") or "localhost",

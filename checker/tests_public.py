@@ -22,10 +22,12 @@ from checker.models import (
     Partner,
     RateBucket,
     Requirement,
+    ServiceHeartbeat,
     Workspace,
 )
 from checker.security import LimitExceeded
 from checker.services import ensure_report, store_asset
+from checker.storage import StorageUnavailable
 
 
 @override_settings(
@@ -428,6 +430,7 @@ class PublicWorkflowTests(TestCase):
         )
         self.assertRedirects(response, reverse("dashboard"), fetch_redirect_response=False)
 
+    @override_settings(DEBUG=True)
     def test_readiness_and_ops_do_not_reveal_details(self):
         self.assertEqual(self.client.get(reverse("readiness")).json(), {"status": "ready"})
         with patch("checker.operations.default_storage.exists", side_effect=RuntimeError("secret")):
@@ -526,3 +529,185 @@ class PublicWorkflowTests(TestCase):
             storage.delete.assert_not_called()
             call_command("reconcile_files", delete=True, stdout=StringIO())
             storage.delete.assert_called_once_with("orphan.txt")
+
+    @override_settings(AUTH_RATE_LIMIT=10)
+    def test_equivalent_unicode_usernames_cannot_bypass_account_throttle(self):
+        self.client.logout()
+        with patch("checker.security.time.time", return_value=9001):
+            for _ in range(5):
+                response = self.client.post(reverse("login"), {"username": "alice", "password": "wrong"})
+                self.assertEqual(response.status_code, 200)
+            # Continue past the IP limit: report the longer account wait when both block.
+            for name in ("alice", "\uff41\uff4c\uff49\uff43\uff45") * 3:
+                response = self.client.post(reverse("login"), {"username": name, "password": "Test-Password-829!"})
+                self.assertEqual(response.status_code, 429)
+                self.assertEqual(response["Retry-After"], "899")
+                self.assertContains(response, "899 seconds", status_code=429)
+                self.assertNotIn("_auth_user_id", self.client.session)
+
+    def test_rate_bucket_retry_wait_ends_at_actual_boundary(self):
+        from checker.security import consume_limit_wait
+
+        with patch("checker.security.time.time", return_value=9001.2):
+            self.assertEqual(consume_limit_wait("audit-limit", 1, 900), 0)
+            self.assertEqual(consume_limit_wait("audit-limit", 1, 900), 899)
+        with patch("checker.security.time.time", return_value=9900):
+            self.assertEqual(consume_limit_wait("audit-limit", 1, 900), 0)
+
+    def test_storage_read_outage_is_503_and_does_not_change_report(self):
+        from botocore.exceptions import EndpointConnectionError
+        from checker.models import CheckRun
+
+        asset = store_asset(self.k1, self.a, "article", SimpleUploadedFile("article.txt", b"original"))
+        before = list(CheckRun.objects.filter(package=self.k1).values_list("fingerprint", flat=True))
+        for failure in (OSError("private provider detail"), EndpointConnectionError(endpoint_url="https://objects.example.test")):
+            with patch("django.core.files.storage.FileSystemStorage.exists", side_effect=failure):
+                for route in ("api_report", "package_detail"):
+                    response = self.client.get(reverse(route, args=[self.k1.pk]))
+                    self.assertEqual(response.status_code, 503)
+                    self.assertNotIn(b"private provider detail", response.content)
+                    self.assertNotIn(b"objects.example.test", response.content)
+            self.assertEqual(before, list(CheckRun.objects.filter(package=self.k1).values_list("fingerprint", flat=True)))
+        with patch("django.core.files.storage.FileSystemStorage.open", side_effect=OSError("private provider detail")):
+            self.assertEqual(self.client.get(reverse("asset_download", args=[self.k1.pk, asset.pk])).status_code, 503)
+        self.assertEqual(self.client.get(reverse("api_report", args=[self.k1.pk])).status_code, 200)
+        with asset.file.open("rb") as stream:
+            self.assertEqual(stream.read(), b"original")
+
+    def test_storage_outage_during_replacement_keeps_old_file_and_report(self):
+        from checker.models import CheckRun
+
+        old = store_asset(self.k1, self.a, "article", SimpleUploadedFile("old.txt", b"old bytes"))
+        run = CheckRun.objects.filter(package=self.k1).first()
+        with patch("checker.services.file_exists", side_effect=StorageUnavailable):
+            response = self.client.post(reverse("asset_upload", args=[self.k1.pk]), {
+                "slot": "article", "file": SimpleUploadedFile("new.txt", b"new bytes")
+            })
+        self.assertEqual(response.status_code, 503)
+        self.assertEqual(self.k1.assets.get().pk, old.pk)
+        self.assertEqual(CheckRun.objects.filter(package=self.k1).first().pk, run.pk)
+        with old.file.open("rb") as stream:
+            self.assertEqual(stream.read(), b"old bytes")
+
+    @override_settings(UPLOAD_MAX_BYTES=3145728)
+    def test_invalid_upload_message_uses_configured_limit(self):
+        response = self.client.post(reverse("asset_upload", args=[self.k1.pk]), {}, follow=True)
+        self.assertContains(response, "upload limit is 3.0\xa0MB")
+        self.assertNotContains(response, "5 MiB")
+
+    @override_settings(DEBUG=False, SECURE_SSL_REDIRECT=False, EMAIL_HOST="")
+    def test_production_readiness_rejects_missing_mail_configuration(self):
+        deliver_batch(0)
+        response = self.client.get(reverse("readiness"))
+        self.assertEqual(response.status_code, 503)
+        self.assertEqual(response.json(), {"status": "unavailable"})
+
+    @override_settings(
+        DEBUG=False, SECURE_SSL_REDIRECT=False,
+        DELIVERY_EMAIL_BACKEND="django.core.mail.backends.smtp.EmailBackend",
+        EMAIL_HOST="smtp.example.test", DEFAULT_FROM_EMAIL="noreply@example.test",
+        EMAIL_USE_TLS=True, EMAIL_USE_SSL=False,
+    )
+    def test_readiness_requires_idle_worker_heartbeat_and_healthy_queue(self):
+        url = reverse("readiness")
+        with patch("checker.mail.send_mail") as send:
+            self.assertEqual(self.client.get(url).status_code, 503)
+            self.assertEqual(deliver_batch(0), 0)
+            self.assertEqual(self.client.get(url).status_code, 200)
+            ServiceHeartbeat.objects.filter(name="mail").update(last_seen=timezone.now() - timedelta(minutes=20))
+            self.assertEqual(self.client.get(url).status_code, 503)
+            deliver_batch(0)
+            job = MailJob.objects.create(recipient="fixture@example.test", subject="fixture", body="fixture", available_at=timezone.now())
+            self.assertEqual(self.client.get(url).status_code, 200)
+            MailJob.objects.filter(pk=job.pk).update(attempts=6)
+            self.assertEqual(self.client.get(url).status_code, 503)
+            MailJob.objects.filter(pk=job.pk).update(attempts=1, created_at=timezone.now() - timedelta(minutes=20))
+            self.assertEqual(self.client.get(url).status_code, 503)
+            MailJob.objects.filter(pk=job.pk).update(sent_at=timezone.now())
+            self.assertEqual(self.client.get(url).status_code, 200)
+            send.assert_not_called()
+
+    def test_dashboard_uses_dated_snapshots_and_flags_changed_rules(self):
+        store_asset(self.k1, self.a, "article", SimpleUploadedFile("article.txt", b"original"))
+        with patch("django.core.files.storage.FileSystemStorage.exists", side_effect=OSError("outage")) as exists:
+            response = self.client.get(reverse("dashboard"))
+            self.assertEqual(response.status_code, 200)
+            self.assertContains(response, "Passed last check")
+            self.assertEqual(response.context["ready_count"], 1)
+            exists.assert_not_called()
+        self.r1.source = "Updated source"
+        self.r1.save()
+        response = self.client.get(reverse("dashboard"))
+        self.assertEqual(response.context["ready_count"], 0)
+        self.assertContains(response, "Report needed")
+        self.assertEqual(self.client.get(reverse("api_report", args=[self.k1.pk])).status_code, 200)
+        self.assertEqual(self.client.get(reverse("dashboard")).context["ready_count"], 1)
+
+    def test_dashboard_batches_queries_and_paginates_cached_packages(self):
+        from django.db import connection
+        from django.test.utils import CaptureQueriesContext
+
+        def add_packages(start, end):
+            for index in range(start, end):
+                package = self.k1 if index == 0 else Package.objects.create(
+                    partner=self.p1, owner=self.a, title=f"Kit {index}", stage="pre"
+                )
+                store_asset(package, self.a, "article", SimpleUploadedFile("article.txt", b"original"))
+
+        add_packages(0, 10)
+        self.client.get(reverse("dashboard"))  # Warm Django's process-level caches first.
+        with CaptureQueriesContext(connection) as first:
+            self.assertEqual(self.client.get(reverse("dashboard")).status_code, 200)
+        first_count = len(first)
+        add_packages(10, 30)
+        with patch("django.core.files.storage.FileSystemStorage.exists") as exists:
+            with CaptureQueriesContext(connection) as larger:
+                response = self.client.get(reverse("dashboard"))
+            exists.assert_not_called()
+        larger_count = len(larger)
+        self.assertGreater(first_count, 0)
+        self.assertLessEqual(larger_count, first_count + 2)
+        self.assertEqual(len(response.context["ready_cards"]), 20)
+        self.assertEqual(response.context["ready_count"], 30)
+        next_page = self.client.get(reverse("dashboard") + "?ready_page=2")
+        self.assertEqual(len(next_page.context["ready_cards"]), 10)
+        self.assertNotContains(response, "Secret Beta")
+        print(f"DASHBOARD QUERY BUDGET: 10 packages={first_count}, 30 packages={larger_count}, storage checks=0")
+
+    def test_new_and_engine_stale_packages_are_prioritized_without_running_checks(self):
+        from checker.models import CheckRun
+
+        ensure_report(self.k1)
+        CheckRun.objects.filter(package=self.k1).update(engine_version="obsolete")
+        for index in range(21):
+            Package.objects.create(partner=self.p1, owner=self.a, title=f"Unchecked {index}", stage="pre")
+        with patch("checker.views.ensure_report") as check:
+            response = self.client.get(reverse("dashboard"))
+            check.assert_not_called()
+        self.assertEqual(response.context["needs_report_count"], 22)
+        self.assertEqual(len(response.context["action_cards"]), 20)
+        self.assertContains(response, "Report needed")
+
+    def test_s3_signing_outage_is_503_after_authorization(self):
+        from botocore.exceptions import EndpointConnectionError
+
+        asset = store_asset(self.k1, self.a, "article", SimpleUploadedFile("article.txt", b"original"))
+        storages = {
+            "default": {
+                "BACKEND": "storages.backends.s3.S3Storage",
+                "OPTIONS": {"bucket_name": "private-fixture", "access_key": "fixture", "secret_key": "fixture"},
+            },
+            "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+        }
+        with (
+            override_settings(STORAGES=storages),
+            patch("storages.backends.s3.S3Storage.exists", return_value=True),
+            patch("storages.backends.s3.S3Storage.url", side_effect=EndpointConnectionError(endpoint_url="https://objects.example.test")) as sign,
+        ):
+            response = self.client.get(reverse("asset_download", args=[self.k1.pk, asset.pk]))
+            self.assertEqual(response.status_code, 503)
+            self.assertNotContains(response, "objects.example.test", status_code=503)
+            sign.reset_mock()
+            self.select(self.b, self.w2)
+            self.assertEqual(self.client.get(reverse("asset_download", args=[self.k1.pk, asset.pk])).status_code, 404)
+            sign.assert_not_called()

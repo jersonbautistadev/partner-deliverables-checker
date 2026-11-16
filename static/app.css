@@ -71,6 +71,9 @@ button:disabled, .button[aria-disabled=true] { cursor: not-allowed; opacity: .65
 .row-action { display: inline-flex; min-height: 44px; align-items: center; justify-content: flex-end; gap: .5rem; color: var(--muted); font-size: .8125rem; white-space: nowrap; }
 .ready-section { margin-top: 2.5rem; }
 .section-note { margin: .6rem 0 0; color: var(--muted); font-size: .8125rem; }
+.worklist-note { margin-bottom: var(--space-5); }
+.pagination { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-4); margin-top: var(--space-3); }
+.pagination a { display: inline-flex; align-items: center; min-height: 44px; }
 .supplement { margin-top: 2rem; padding-top: 1rem; border-top: 1px solid var(--line); }
 .supplement p { margin: .6rem 0 0; }
 .supplement .meta { display: block; }
