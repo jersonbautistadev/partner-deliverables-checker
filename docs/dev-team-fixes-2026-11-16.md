@@ -1,5 +1,7 @@
 # Dev-team fixes: 16 November 2026
 
+This is the implementation checkpoint before live staging setup. For current 125-test, hosted CI, managed recovery and owner email evidence, use the [subsequent staging record](staging-verification-2026-11-16.md). Statements below about unexecuted provider/container checks describe this earlier checkpoint.
+
 Branch: `fix/dev-team-release-gaps`, based on `e3280e4`. Implements the repository fixes from the [dev-team audit](dev-team-audit-2026-11-16.md), following `D:\Programming\Skills\dev team\dev-team-playbook.md`. Production configuration, accounts, mail jobs and originals were not changed. No production migration, real email, paid resource or public release was performed.
 
 ## Changes and acceptance evidence

@@ -1,6 +1,6 @@
 # Public release readiness
 
-Current decision: [16 November 2026 dev-team fixes](dev-team-fixes-2026-11-16.md) resolves the repository findings from the [audit](dev-team-audit-2026-11-16.md), with fresh 120-test SQLite/PostgreSQL results. Suitable for staging review; public launch remains blocked on email, managed recovery, monitoring and hosted acceptance. The checkpoint below retains earlier totals and its changed-file inventory as history.
+Current decision: **protected staging is running; public launch remains no-go**. The [16 November staging record](staging-verification-2026-11-16.md) supersedes the historical checkpoints below: 125-test SQLite/PostgreSQL suites and hosted CI passed; isolated managed backup restoration, real owner email verification, hosted sign-in and private workspace creation passed. Remaining hosted account/file acceptance, an unattended mail dispatcher, off-site backup operations, monitoring and launch approval are still required. The [dev-team fixes](dev-team-fixes-2026-11-16.md) describe the implementation behind this release.
 
 Recorded 15 November 2026. Local implementation and verification are finished for this release candidate. **Vercel build and database/storage health are verified; email/account acceptance is pending and public launch remains blocked.** This is execution evidence, not a security certification.
 

@@ -1,6 +1,6 @@
 # Verification record
 
-Latest implementation evidence: [16 November 2026 dev-team fixes](dev-team-fixes-2026-11-16.md), following the [audit](dev-team-audit-2026-11-16.md). Fresh-runtime SQLite and native PostgreSQL suites each ran 120 tests successfully; live email, managed recovery and hosted acceptance remain launch gates. Earlier checkpoints below remain historical evidence.
+Latest evidence: [16 November 2026 isolated staging](staging-verification-2026-11-16.md), following the [dev-team fixes](dev-team-fixes-2026-11-16.md) and [audit](dev-team-audit-2026-11-16.md). SQLite and native PostgreSQL suites each ran 125 tests successfully; hosted CI, managed recovery, real owner email verification and initial hosted workspace/isolation checks passed. Remaining acceptance and operational gates are explicitly listed in that record. Earlier checkpoints below remain historical evidence.
 
 Recorded 15 November 2026 (Asia/Manila). This replaces the obsolete October record. Local and hosted evidence are distinguished below. The latest hosted checkpoint is at the end; earlier results are retained as history.
 
