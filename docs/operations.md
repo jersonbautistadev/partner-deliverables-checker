@@ -1,5 +1,8 @@
 # Migration, recovery and operator procedures
 
+The protected Supabase staging deployment uses a [two-minute mail scheduler](staging-mail-scheduler.md).
+Its provider configuration and credentials are deliberately separate from production and application backup bundles.
+
 ## Legacy single-team migration
 
 Take a database **and originals** backup and pause traffic before `migrate`. Migration 0002 creates a legacy workspace if legacy accounts/data exist, assigns existing partners and audit events, and converts Coordinator/Contributor groups into memberships. Superusers receive a coordinator membership in that legacy workspace only. Users without a team role remain without membership. Existing package IDs, paths, revisions, snapshots, fingerprints and review decisions are not rewritten.

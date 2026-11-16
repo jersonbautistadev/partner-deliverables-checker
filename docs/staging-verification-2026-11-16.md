@@ -37,10 +37,64 @@ The encrypted bundle is stored locally under ignored `.local-backups/staging-reh
 - The hosted signup form acknowledged an account for the owner's mailbox, and its unverified sign-in attempt was rejected. Calling the staging dispatcher returned `{"delivered": 1}`. The owner subsequently confirmed inbox receipt and completed the email confirmation; an application database read independently confirmed the account's verified state. The generated test account credentials are stored locally with Windows-user encryption.
 - Verified sign-in created a Secure, HttpOnly session. The new account initially had no memberships, then created `Staging acceptance workspace` through the actual HTTPS form and became its coordinator. Removing its last coordinator was rejected. Submitted selection of synthetic workspace 1, its package URL, report API and original-file download each returned 404 to this unrelated account.
 - Orca's embedded browser rendered the actual hosted team settings and signup pages at 390px, 768px and 1200px. Screenshots were inspected at all three widths and document width measurements showed no horizontal overflow. The password-reset request page was also inspected at phone width. These checks are not a full WCAG or assistive-technology audit.
-- A separate account using an owner-controlled Gmail plus alias was registered for the invitation exercise. Its verification, contributor invitation and the owner's password-reset message were handed to SMTP (`delivered: 3`). Confirmation/reset/acceptance results must be recorded separately; sending these messages does not prove those steps completed.
+- A separate account using an owner-controlled Gmail plus alias was registered for the invitation exercise. Its verification, contributor invitation and the owner's password-reset message were handed to SMTP (`delivered: 3`). The owner confirmed alias verification; a staging database read independently confirmed both test accounts are active and verified. Invitation acceptance remains pending.
 - Missing CSRF on signup returned 403; missing machine authentication on the mail endpoint returned 401. Responses included HSTS, frame denial and `nosniff`; the CSRF cookie was Secure. The CSRF cookie is intentionally readable by the client and is not an authentication session cookie.
 - An authenticated comparison confirmed production deployment ID, production environment records and Vercel sign-in protection remained unchanged. No production mail dispatcher, migration or application write was performed.
 
+## Reset delivery incident and automatic staging dispatch
+
+At 13:57 UTC the owner reported an expired reset link and no replacement email.
+The original reset was created at 07:11 UTC, exceeding the configured one-hour
+timeout. The replacement request was present in staging at 13:55:23 UTC, unsent
+with zero attempts; the last dispatcher heartbeat was still 07:11 UTC. This
+confirmed an absent automatic dispatcher, rather than SMTP rejecting the message.
+A protected manual dispatch handed the replacement to Gmail. The owner confirmed
+receipt and completed the reset; an HTTPS request using the pre-reset session
+then redirected to sign-in. New-password sign-in has not been independently run.
+
+Configured the dedicated staging Supabase project with `pg_cron` 1.6.4, `http`
+1.6 and the existing Vault extension. The `pdc-staging-mail` job calls the stable
+protected branch alias every two minutes. Credentials reside in Vault and HTTP
+headers, with certificate/hostname verification and bounded network timeouts.
+No plaintext HTTP request queue is used. The previously temporary Vercel
+automation credential is now retained as the staging scheduler credential;
+revoking it requires stopping/reconfiguring the job. Setup, monitoring and pause
+instructions are in [the scheduler runbook](staging-mail-scheduler.md).
+
+Initial permission assertions identified Supabase-owned HTTP functions with
+PUBLIC execution grants that `postgres` could not revoke. The job was paused
+while resolving this. The final configuration removes `extensions` schema usage
+from the unused anonymous/authenticated API roles and both application roles,
+preserving provider service/dashboard grants. Metadata checks confirmed all four
+roles lack networking schema/Vault access. Actual connections as `pdc_web` and
+`pdc_migrator` returned insufficient-privilege errors for networking, decrypted
+Vault reads and operator dispatch. No role was elevated to a provider superuser.
+
+Executed scheduled evidence:
+
+- Idle scheduled run: **14:04:00 UTC, succeeded**.
+- An approved-owner test message was queued at **14:04:16 UTC**, initially unsent
+  with zero attempts. With no further manual dispatch, the **14:06:00 UTC** job
+  succeeded and recorded SMTP acceptance at **14:06:01 UTC**, one attempt, about
+  105 seconds after enqueue. Its heartbeat updated at the same time.
+- Actual protected `/ready/` returned 200. Inbox receipt of this specific automatic
+  test message has not been independently confirmed; earlier owner verification
+  and fresh reset receipt were confirmed directly by the owner.
+- Ruff and diff checks passed for this follow-up. The complete 125-test suites
+  above preceded these provider SQL/documentation changes; they were not rerun
+  locally for this follow-up.
+
+This configures staging only. The production GitHub dispatcher remains disabled;
+its pending messages were not sent. The app's one-hour reset expiry was retained.
+
 ## Remaining acceptance
 
-Remaining hosted password-reset/invitation/file flows, monitoring and operational scheduling still require execution. Readiness depends on a dispatcher run within 900 seconds; the successful manual invocation does not establish an unattended scheduler. Server-side rejection of non-TLS database connections has not been verified, although the exercised clients enforce certificate and hostname verification. Revoke temporary automation access after the acceptance exercise. No production promotion or public-launch approval is implied by this setup. Do not copy production services into the preview or weaken verification/readiness to bypass a missing service.
+Remaining new-password sign-in/invitation/file flows, independent alert delivery,
+off-site backup operations and approved production scheduling still require
+execution. Staging readiness depends on dispatcher activity within 900 seconds;
+two-minute scheduling is now exercised, without a delivery SLA. Server-side
+rejection of non-TLS database connections has not been verified, although the
+exercised clients enforce certificate and hostname verification. No production
+promotion or public-launch approval is implied by this setup. Do not copy
+production services into the preview or weaken verification/readiness to bypass
+a missing service.

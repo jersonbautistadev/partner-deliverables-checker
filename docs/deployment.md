@@ -1,6 +1,6 @@
 # Deployment runbook
 
-Requested target: **Vercel**, with an optional Linux Compose alternative. Supabase-backed staging configuration has begun; see the current verification record for hosted build results. See `release-readiness.md` for actual execution evidence.
+Requested target: **Vercel**, with an optional Linux Compose alternative. Supabase-backed staging is running with a verified [two-minute staging mail scheduler](staging-mail-scheduler.md). This does not enable production mail. See `release-readiness.md` and the [staging record](staging-verification-2026-11-16.md) for actual execution evidence.
 
 ## Vercel prerequisites
 
