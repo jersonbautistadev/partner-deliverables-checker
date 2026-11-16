@@ -4,6 +4,8 @@ from pathlib import Path
 import subprocess
 import sys
 import tempfile
+import json
+import tarfile
 from types import SimpleNamespace
 from unittest.mock import patch
 from unittest import skipUnless
@@ -11,10 +13,88 @@ from unittest import skipUnless
 from cryptography.exceptions import InvalidTag
 from django.test import SimpleTestCase
 
-from checker.backup import decrypt, encrypt, pg_environment
+from checker.backup import decrypt, encrypt, pg_environment, pg_application_tables
 
 
 class RecoveryTests(SimpleTestCase):
+    def test_legacy_whole_postgres_backup_is_rejected_before_restore_writes(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            manifest = root / "manifest.json"
+            manifest.write_text(json.dumps({"version":1,"database":"postgresql","assets":[]}), encoding="utf-8")
+            with tarfile.open(root / "legacy.tar.gz", "w:gz") as bundle:
+                bundle.add(manifest, arcname="manifest.json")
+            with (
+                patch.dict(os.environ, {"BACKUP_ENCRYPTION_KEY":base64.urlsafe_b64encode(os.urandom(32)).decode()}),
+                patch("checker.backup.get_user_model") as user_model,
+                patch("checker.backup.Workspace") as workspace,
+                patch("checker.backup.connection", SimpleNamespace(vendor="postgresql")),
+                patch("checker.backup.subprocess.run") as restore,
+            ):
+                user_model.return_value.objects.exists.return_value = False
+                workspace.objects.exists.return_value = False
+                encrypt(root / "legacy.tar.gz", root / "legacy.pdc")
+                from checker.backup import restore_bundle
+
+                with self.assertRaisesMessage(ValueError, "application-scoped PostgreSQL backup"):
+                    restore_bundle(root / "legacy.pdc")
+                restore.assert_not_called()
+
+    def test_postgresql_dump_includes_only_installed_django_tables_and_migrations(self):
+        from unittest.mock import Mock
+
+        fake = Mock()
+        fake.introspection.django_table_names.return_value = ["auth_user", "checker_workspace"]
+        fake.ops.quote_name.side_effect = lambda name: '"' + name + '"'
+        with patch("checker.backup.connection", fake):
+            args = pg_application_tables()
+        self.assertEqual(args, ["--strict-names", "--table", '"public"."auth_user"', "--table", '"public"."checker_workspace"', "--table", '"public"."django_migrations"'])
+
+    def preview_environment(self):
+        env = os.environ.copy()
+        for key in ("DJANGO_ALLOWED_HOSTS", "PUBLIC_BASE_URL", "CSRF_TRUSTED_ORIGINS"):
+            env.pop(key, None)
+        env.update(
+            DJANGO_DEBUG="0", VERCEL="1", VERCEL_ENV="preview",
+            DJANGO_SECRET_KEY="fixture-only-not-production-preview-key-at-least-fifty-characters-7294",
+            VERCEL_BRANCH_URL="fixture-git-review-fixture.vercel.app",
+            VERCEL_URL="fixture-deployment-fixture.vercel.app",
+            DATABASE_URL="postgresql://fixture:fixture@localhost/fixture",
+            PRIVATE_S3_BUCKET="fixture-private",
+        )
+        return env
+
+    def test_preview_urls_use_exact_platform_hosts_and_https(self):
+        result = subprocess.run([
+            sys.executable, "-c",
+            "import config.settings as s; "
+            "assert s.ALLOWED_HOSTS==['fixture-git-review-fixture.vercel.app','fixture-deployment-fixture.vercel.app']; "
+            "assert s.CSRF_TRUSTED_ORIGINS==['https://fixture-git-review-fixture.vercel.app','https://fixture-deployment-fixture.vercel.app']; "
+            "assert s.PUBLIC_BASE_URL=='https://fixture-git-review-fixture.vercel.app'; "
+            "assert not s.DEBUG",
+        ], env=self.preview_environment(), capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_preview_rejects_invalid_or_missing_platform_hostnames(self):
+        for hostname in ("", "https://fixture.vercel.app", "fixture.vercel.app.evil.test", "fixture.vercel.app/path"):
+            env = self.preview_environment()
+            env["VERCEL_BRANCH_URL"] = hostname
+            env["VERCEL_URL"] = ""
+            with self.subTest(hostname=hostname):
+                result = subprocess.run([sys.executable, "-c", "import config.settings"], env=env, capture_output=True, text=True)
+                self.assertNotEqual(result.returncode, 0)
+
+    def test_preview_preserves_explicit_origin_configuration(self):
+        env = self.preview_environment()
+        env.update(DJANGO_ALLOWED_HOSTS="staging.example.test", PUBLIC_BASE_URL="https://staging.example.test", CSRF_TRUSTED_ORIGINS="https://staging.example.test")
+        result = subprocess.run([
+            sys.executable, "-c", "import config.settings as s; "
+            "assert s.ALLOWED_HOSTS==['staging.example.test']; "
+            "assert s.CSRF_TRUSTED_ORIGINS==['https://staging.example.test']; "
+            "assert s.PUBLIC_BASE_URL=='https://staging.example.test'",
+        ], env=env, capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+
     def test_backup_clients_use_configured_ca_and_preserve_verification(self):
         database = {
             "HOST": "database.example.test", "USER": "backup", "PASSWORD": "fixture",

@@ -17,6 +17,7 @@ from django.contrib.auth import get_user_model
 from django.core.files import File
 from django.core.files.storage import default_storage
 from django.db import connection
+from django.db.migrations.recorder import MigrationRecorder
 
 from checker.models import Asset, Workspace
 
@@ -91,6 +92,16 @@ def pg_environment():
     return env, args
 
 
+def pg_application_tables():
+    """Back up Django-owned public tables, never provider-managed schemas or tables."""
+    tables = set(connection.introspection.django_table_names(include_views=False))
+    tables.add(MigrationRecorder.Migration._meta.db_table)
+    args = ["--strict-names"]
+    for table in sorted(tables):
+        args.extend(["--table", '"public".' + connection.ops.quote_name(table)])
+    return args
+
+
 def make_bundle(destination):
     encryption_key()
     vendor = connection.vendor
@@ -112,6 +123,7 @@ def make_bundle(destination):
                 [
                     os.environ.get("PG_DUMP", "pg_dump"),
                     *args,
+                    *pg_application_tables(),
                     "-Fc",
                     "-f",
                     str(dbfile),
@@ -123,6 +135,8 @@ def make_bundle(destination):
                 stderr=subprocess.DEVNULL,
             )
         manifest = {"version": 1, "database": vendor, "assets": []}
+        if vendor == "postgresql":
+            manifest["database_scope"] = "django-public-tables"
         with tarfile.open(root / "bundle.tar.gz", "w:gz") as bundle:
             bundle.add(dbfile, arcname="database.dump")
             for asset in Asset.objects.order_by("pk"):
@@ -161,6 +175,11 @@ def restore_bundle(source):
             manifest = json.load(bundle.extractfile("manifest.json"))
             if manifest.get("version") != 1 or manifest.get("database") != connection.vendor:
                 raise ValueError("Backup and target database types must match.")
+            if connection.vendor == "postgresql" and manifest.get("database_scope") != "django-public-tables":
+                raise ValueError(
+                    "Use an application-scoped PostgreSQL backup from the current release. "
+                    "Inspect legacy whole-database bundles separately in an isolated database."
+                )
             for asset in manifest["assets"]:
                 name = PurePosixPath(asset["path"])
                 if name.is_absolute() or ".." in name.parts or "\\" in asset["path"]:

@@ -1,4 +1,5 @@
 import os
+import re
 from pathlib import Path
 
 from django.core.exceptions import ImproperlyConfigured
@@ -10,8 +11,23 @@ if os.environ.get("VERCEL_ENV") == "production" and DEBUG:
 SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "development-only-never-use-in-production")
 if not DEBUG and (len(SECRET_KEY) < 50 or SECRET_KEY.startswith("development-")):
     raise ImproperlyConfigured("Set a random DJANGO_SECRET_KEY of at least 50 characters.")
-ALLOWED_HOSTS = os.environ.get("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1,[::1]").split(",")
-CSRF_TRUSTED_ORIGINS = list(filter(None, os.environ.get("CSRF_TRUSTED_ORIGINS", "").split(",")))
+preview_hosts = []
+if os.environ.get("VERCEL") and os.environ.get("VERCEL_ENV") == "preview":
+    for name in ("VERCEL_BRANCH_URL", "VERCEL_URL"):
+        host = os.environ.get(name, "")
+        if host:
+            if not re.fullmatch(r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.vercel\.app", host):
+                raise ImproperlyConfigured("Invalid Vercel preview hostname.")
+            if host not in preview_hosts:
+                preview_hosts.append(host)
+    if not preview_hosts:
+        raise ImproperlyConfigured("Expose Vercel preview URL system variables.")
+ALLOWED_HOSTS = os.environ.get(
+    "DJANGO_ALLOWED_HOSTS", ",".join(preview_hosts) or "localhost,127.0.0.1,[::1]"
+).split(",")
+CSRF_TRUSTED_ORIGINS = list(filter(None, os.environ.get(
+    "CSRF_TRUSTED_ORIGINS", ",".join("https://" + host for host in preview_hosts)
+).split(",")))
 INSTALLED_APPS = [
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -133,7 +149,9 @@ EMAIL_USE_TLS = os.environ.get("EMAIL_USE_TLS", "1") == "1"
 EMAIL_USE_SSL = os.environ.get("EMAIL_USE_SSL", "0") == "1"
 EMAIL_TIMEOUT = 10
 DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "noreply@localhost")
-PUBLIC_BASE_URL = os.environ.get("PUBLIC_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
+PUBLIC_BASE_URL = os.environ.get(
+    "PUBLIC_BASE_URL", "https://" + preview_hosts[0] if preview_hosts else "http://127.0.0.1:8000"
+).rstrip("/")
 PASSWORD_RESET_TIMEOUT = 3600
 VERIFICATION_HOURS = 24
 INVITATION_HOURS = 48

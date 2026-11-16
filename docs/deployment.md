@@ -24,6 +24,7 @@ Official references: [Django on Vercel](https://vercel.com/docs/frameworks/full-
 - Keep Vercel `UPLOAD_MAX_BYTES` at most 3145728 (3 MiB), below the documented 4.5 MB function request cap including multipart overhead. Browser help and server checks share this limit. Private downloads use authorized 60-second signed attachment URLs rather than routing large response bodies through the function.
 - `.vercelignore` excludes databases, private files, test mail, fixtures, recovery artifacts and runtime downloads. Check the actual deployment artifact before launch. Do not deploy `.env` files or backups.
 - Preview environments must have their own database, bucket/prefix, origin, secrets and safe email destinations. Never let a preview migration or test write to production.
+- In a Vercel Preview deployment, unset origin settings default to the exact validated `VERCEL_BRANCH_URL`/`VERCEL_URL` system hostnames and HTTPS origins. The branch hostname becomes the default account-link origin. Enable system environment variables; missing/invalid platform hostnames fail startup. Explicit `DJANGO_ALLOWED_HOSTS`, `CSRF_TRUSTED_ORIGINS`, and `PUBLIC_BASE_URL` still take precedence. Production origin behavior is unchanged. Do not use a wildcard `.vercel.app` allowlist.
 
 Do not run migrations at WSGI import or on every request. With traffic closed, use a trusted runner with the intended environment injected:
 
