@@ -2,29 +2,34 @@ from datetime import timedelta
 from pathlib import Path
 
 from django.core.management.base import BaseCommand, CommandError
+from django.db import connection
 from django.utils import timezone
 
 from checker.backup import make_bundle
 
 
 class Command(BaseCommand):
-    help = "Back up an OFFLINE database and original files into an encrypted bundle."
+    help = "Back up a paused application, or lock PostgreSQL file records while capturing a bundle."
 
     def add_arguments(self, parser):
         parser.add_argument("--directory", required=True)
-        parser.add_argument("--traffic-paused", action="store_true")
+        mode = parser.add_mutually_exclusive_group(required=True)
+        mode.add_argument("--traffic-paused", action="store_true")
+        mode.add_argument("--lock-assets", action="store_true")
         parser.add_argument("--retention-days", type=int, default=30)
 
     def handle(self, *args, **options):
-        if not options["traffic_paused"] or options["retention_days"] < 1:
+        if options["retention_days"] < 1:
             raise CommandError(
-                "Stop all web/mail writers first and pass --traffic-paused; retention must be positive."
+                "Retention must be positive."
             )
+        if options["lock_assets"] and connection.vendor != "postgresql":
+            raise CommandError("--lock-assets requires PostgreSQL; use --traffic-paused for SQLite.")
         folder = Path(options["directory"]).resolve()
         folder.mkdir(parents=True, exist_ok=True, mode=0o700)
         output = folder / ("pdc-" + timezone.now().strftime("%Y%m%dT%H%M%S%f") + ".pdc")
         try:
-            make_bundle(output)
+            make_bundle(output, lock_assets=options["lock_assets"])
         except Exception as exc:
             raise CommandError(
                 f"Backup failed ({type(exc).__name__}); no valid bundle produced."

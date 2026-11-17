@@ -1,5 +1,9 @@
 # Isolated staging: 16 November 2026
 
+Subsequent invitation, contributor-access and resumed-service evidence is in the
+[17 November follow-up](staging-verification-2026-11-17.md). The results below
+remain the record of their execution checkpoint.
+
 Branch: `fix/dev-team-release-gaps`; production `main` remains separate. This record distinguishes completed service/recovery checks from email and hosted acceptance still in progress.
 
 ## Provisioned and verified

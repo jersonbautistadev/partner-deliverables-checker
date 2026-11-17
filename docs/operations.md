@@ -32,7 +32,7 @@ python manage.py create_team_user USERNAME --workspace WORKSPACE_ID --email user
 
 The password is prompted and validated; verification is still required. Do not pass passwords as CLI arguments. Do not hand an operator shell or Django superuser credentials to team coordinators.
 
-## Encrypted offline backup
+## Encrypted backup
 
 Use a trusted external runner with network access to the database/object store and the same application version/settings. PostgreSQL needs matching `pg_dump`/`pg_restore` clients; override their executable paths with `PG_DUMP` and `PG_RESTORE` if needed. The Vercel web function is not the backup runner.
 
@@ -46,11 +46,32 @@ Migration `0004_service_heartbeat` is additive and reversible. Roll back applica
 
 Generate and securely store a separate random 32-byte base64-url-safe `BACKUP_ENCRYPTION_KEY`. Keep it outside the repository and outside the backup destination; retain the correct old key when rotating. Without the key, recovery is impossible. Bundles contain account data, private files, sessions and possibly unexpired email tokens. Restrict destination/key access and maintain encrypted off-site copies.
 
-Stop **all** web, worker and maintenance writers first. `--traffic-paused` is an operator assertion, not an automatic lock across remote function instances. A `pg_dump` alone is internally consistent for the database but cannot prevent a simultaneous original-file replacement/deletion. For Vercel, use a controlled maintenance/protection procedure and stop the external mail dispatcher; provider-native snapshots plus bucket versioning are another option only after a consistent restore is proven.
+Choose one consistency mode. SQLite and older releases require **all** web,
+worker and maintenance writers to stop first. `--traffic-paused` is an operator
+assertion, not an automatic lock across remote function instances. A `pg_dump`
+alone cannot prevent simultaneous original-file replacement or deletion.
 
 ```bash
 python manage.py backup_bundle --directory /secure/backups --traffic-paused --retention-days 30
 ```
+
+Current PostgreSQL releases also support coordinated capture without stopping
+mail delivery:
+
+```bash
+python manage.py backup_bundle --directory /secure/backups --lock-assets --retention-days 30
+```
+
+This requires a session connection and an autocommit command outside any enclosing
+transaction. A PostgreSQL SHARE lock on the Asset table blocks original-file
+writes and deletions while the database dump and referenced bytes are captured;
+ordinary reads continue. Uploads/replacements/removals can wait during this
+interval, so schedule quiet periods and monitor duration. Acquisition times out
+after ten seconds. A lost lock/session aborts before encryption or publication.
+Do not run migrations, external file cleanup, direct object-store edits or other
+out-of-band writers during capture. Application roles must not bypass the normal
+transactional file services. SQLite refuses this mode. The separate
+[off-site command and runner](offsite-backups.md) use this PostgreSQL mode.
 
 The command bundles the database and every referenced original after checking its digest, then encrypts using streaming AES-256-GCM. A successful new bundle is required before matching local bundles older than the retention period are removed. Failure does not delete an existing backup. Local output and key must be copied/stored according to the off-site policy; this command does not create cloud accounts or an off-site destination.
 

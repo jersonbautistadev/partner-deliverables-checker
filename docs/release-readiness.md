@@ -1,6 +1,18 @@
 # Public release readiness
 
-Current decision: **protected staging is running; public launch remains no-go**. The [16 November staging record](staging-verification-2026-11-16.md) supersedes the historical checkpoints below: 125-test SQLite/PostgreSQL suites and hosted CI passed; isolated managed backup restoration, real owner verification/password reset, hosted sign-in and private workspace creation passed. A two-minute staging dispatcher also completed an actual scheduled send. Remaining hosted account/file acceptance, approved production dispatch, off-site backup operations, monitoring and launch approval are still required. The [dev-team fixes](dev-team-fixes-2026-11-16.md) describe the implementation behind this release.
+Current decision: **protected staging acceptance passed; public launch remains no-go**.
+The [17 November record](staging-verification-2026-11-17.md) supersedes historical
+checkpoints below. Actual hosted invitation, reset/sign-in, workspace/role,
+upload/replacement/quota, review invalidation, source/history and private-download
+flows passed. Current local SQLite/PostgreSQL suites each passed 142 tests.
+A real encrypted Backblaze copy restored into a fresh managed database/private
+prefix, including original downloads for both roles. Independent readiness
+monitoring is active and the owner received a missed-job Gmail alert. Current
+operator code still requires its pushed CI/Actions runner and nightly schedule
+rehearsal. Production-specific configuration/dispatch, policy/capacity review and
+explicit launch approval remain gates. See [off-site operations](offsite-backups.md).
+
+## Historical 15 November checkpoint
 
 Recorded 15 November 2026. Local implementation and verification are finished for this release candidate. **Vercel build and database/storage health are verified; email/account acceptance is pending and public launch remains blocked.** This is execution evidence, not a security certification.
 

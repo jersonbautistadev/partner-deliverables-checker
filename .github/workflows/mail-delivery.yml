@@ -6,15 +6,15 @@ on:
     - cron: '23 3 * * *'
 permissions:
   contents: read
-concurrency:
-  group: mail-dispatch
-  cancel-in-progress: false
 jobs:
   deliver:
     # Enable only after a staging rehearsal and explicit approval for real-user email.
     if: vars.ENABLE_MAIL_DISPATCH == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 3
+    concurrency:
+      group: mail-dispatch
+      cancel-in-progress: false
     steps:
       - name: Invoke protected dispatcher
         env:
@@ -38,6 +38,9 @@ jobs:
     if: vars.ENABLE_MAIL_DISPATCH == 'true' && (github.event_name == 'workflow_dispatch' || github.event.schedule == '23 3 * * *')
     runs-on: ubuntu-latest
     timeout-minutes: 3
+    concurrency:
+      group: maintenance
+      cancel-in-progress: false
     steps:
       - name: Prune expired security records
         env:
@@ -56,3 +59,66 @@ jobs:
                   raise SystemExit('Maintenance failed.')
           print('Maintenance acknowledged.')
           PY
+
+  staging-backup:
+    # Dispatch the registered workflow at the reviewed operations ref. Production
+    # mail settings/credentials are deliberately not used by this job.
+    if: github.event_name == 'workflow_dispatch' && vars.ENABLE_STAGING_BACKUP == 'true' && github.ref_name == vars.STAGING_BACKUP_REF
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    concurrency:
+      group: staging-offsite-backup
+      cancel-in-progress: false
+    env:
+      DJANGO_DEBUG: "0"
+      DJANGO_SECRET_KEY: ${{ secrets.STAGING_BACKUP_DJANGO_SECRET_KEY }}
+      DATABASE_URL: ${{ secrets.STAGING_BACKUP_DATABASE_URL }}
+      DATABASE_REQUIRE_SSL: "1"
+      DATABASE_SSL_ROOT_CERT: deploy/supabase-root-ca.crt
+      PRIVATE_S3_BUCKET: staging-deliverables
+      PRIVATE_S3_ACCESS_KEY: ${{ secrets.STAGING_SOURCE_S3_ACCESS_KEY }}
+      PRIVATE_S3_SECRET_KEY: ${{ secrets.STAGING_SOURCE_S3_SECRET_KEY }}
+      PRIVATE_S3_ENDPOINT_URL: https://dwijbooalncbcaogbjnc.storage.supabase.co/storage/v1/s3
+      PRIVATE_S3_REGION: us-east-1
+      PRIVATE_S3_ADDRESSING_STYLE: path
+      PRIVATE_S3_PREFIX: staging/originals
+      BACKUP_ENCRYPTION_KEY: ${{ secrets.STAGING_BACKUP_ENCRYPTION_KEY }}
+      BACKUP_S3_ENDPOINT_URL: ${{ vars.STAGING_BACKUP_S3_ENDPOINT_URL }}
+      BACKUP_S3_REGION: ${{ vars.STAGING_BACKUP_S3_REGION }}
+      BACKUP_S3_BUCKET: ${{ vars.STAGING_BACKUP_S3_BUCKET }}
+      BACKUP_S3_PREFIX: staging/
+      BACKUP_S3_ACCESS_KEY: ${{ secrets.STAGING_BACKUP_S3_ACCESS_KEY }}
+      BACKUP_S3_SECRET_KEY: ${{ secrets.STAGING_BACKUP_S3_SECRET_KEY }}
+      BACKUP_STORAGE_LIMIT_BYTES: "3221225472"
+      BACKUP_HEALTHCHECK_URL: ${{ secrets.STAGING_BACKUP_HEALTHCHECK_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements.txt
+      - name: Validate isolated source before connecting
+        run: |
+          python - <<'PY'
+          import os
+          from urllib.parse import urlsplit, parse_qs
+          source = urlsplit(os.environ['DATABASE_URL'])
+          if (source.hostname != 'aws-1-us-east-1.pooler.supabase.com'
+              or source.port != 5432 or source.username != 'pdc_migrator.dwijbooalncbcaogbjnc'
+              or source.path != '/postgres' or parse_qs(source.query).get('sslmode') != ['verify-full']):
+              raise SystemExit('Refusing a source other than the dedicated staging database with verified TLS.')
+          PY
+      - run: python -m pip install --require-hashes -r requirements.txt
+      - name: Prepare matching PostgreSQL client without root-owned backup files
+        run: |
+          mkdir -p .runtime/bin
+          cat > .runtime/bin/pg_dump <<'SH'
+          #!/bin/sh
+          exec docker run --rm --network host --user "$(id -u):$(id -g)" -v "$PWD:$PWD:ro" -v "$RUNNER_TEMP:$RUNNER_TEMP" -e PGPASSWORD -e PGSSLMODE -e PGSSLROOTCERT postgres:17-alpine pg_dump "$@"
+          SH
+          chmod +x .runtime/bin/pg_dump
+          echo "PG_DUMP=$PWD/.runtime/bin/pg_dump" >> "$GITHUB_ENV"
+          echo "TMPDIR=$RUNNER_TEMP" >> "$GITHUB_ENV"
+      - name: Capture and verify private encrypted off-site copy
+        run: python manage.py backup_offsite --directory "$RUNNER_TEMP/pdc-staging-backups"

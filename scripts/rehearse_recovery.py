@@ -74,7 +74,7 @@ assert ensure_report(k).findings[0]['status']=='passed'
                 sys.executable,
                 "manage.py",
                 "backup_bundle",
-                "--traffic-paused",
+                "--lock-assets" if postgres else "--traffic-paused",
                 "--directory",
                 str(root / "bundles"),
             ],

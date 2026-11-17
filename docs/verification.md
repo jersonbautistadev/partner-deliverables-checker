@@ -1,6 +1,13 @@
 # Verification record
 
-Latest evidence: [16 November 2026 isolated staging](staging-verification-2026-11-16.md), following the [dev-team fixes](dev-team-fixes-2026-11-16.md) and [audit](dev-team-audit-2026-11-16.md). SQLite and native PostgreSQL suites each ran 125 tests successfully; hosted CI, managed recovery, real owner email verification and initial hosted workspace/isolation checks passed. Remaining acceptance and operational gates are explicitly listed in that record. Earlier checkpoints below remain historical evidence.
+Latest evidence: [17 November 2026 staging acceptance and operations](staging-verification-2026-11-17.md),
+following the [dev-team fixes](dev-team-fixes-2026-11-16.md) and
+[audit](dev-team-audit-2026-11-16.md). Current local suites passed 142 tests on
+SQLite and PostgreSQL; real hosted role/file/review flows and remote recovery
+from a private Backblaze backup passed. The owner received an independent
+missed-job Gmail alert. Current branch CI/runner scheduling and remaining
+production gates are distinguished in that record. Earlier checkpoints below
+remain historical evidence.
 
 Recorded 15 November 2026 (Asia/Manila). This replaces the obsolete October record. Local and hosted evidence are distinguished below. The latest hosted checkpoint is at the end; earlier results are retained as history.
 

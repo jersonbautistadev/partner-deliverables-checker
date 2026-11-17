@@ -1,6 +1,7 @@
-"""Offline backup bundles. Authentication completes before database/original-file restore writes."""
+"""Encrypted backup bundles. Restore authenticates before database/original-file writes."""
 
 import base64
+from contextlib import contextmanager, nullcontext
 import hashlib
 import json
 import os
@@ -16,7 +17,7 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.files import File
 from django.core.files.storage import default_storage
-from django.db import connection
+from django.db import connection, transaction
 from django.db.migrations.recorder import MigrationRecorder
 
 from checker.models import Asset, Workspace
@@ -102,66 +103,97 @@ def pg_application_tables():
     return args
 
 
-def make_bundle(destination):
+@contextmanager
+def postgres_asset_snapshot():
+    """Keep dump rows and referenced originals stable until the archive is captured."""
+    if connection.vendor != "postgresql":
+        raise ValueError("Asset locking requires PostgreSQL.")
+    if not connection.get_autocommit():
+        raise ValueError("Run coordinated backups outside an existing transaction.")
+    table = Asset._meta.db_table
+    with transaction.atomic():
+        with connection.cursor() as cursor:
+            cursor.execute("SET LOCAL lock_timeout = '10s'")
+            cursor.execute(f"LOCK TABLE {connection.ops.quote_name(table)} IN SHARE MODE")
+        yield
+        # A lost/expired database session must fail before encryption/publication.
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "SELECT EXISTS (SELECT 1 FROM pg_locks WHERE pid = pg_backend_pid() "
+                "AND relation = %s::regclass AND mode = 'ShareLock' AND granted)",
+                [table],
+            )
+            if not cursor.fetchone()[0]:
+                raise ValueError("Backup snapshot lock was lost; discard this attempt.")
+
+
+def make_bundle(destination, *, lock_assets=False):
     encryption_key()
     vendor = connection.vendor
     if vendor not in {"sqlite", "postgresql"}:
         raise ValueError("Unsupported database.")
     with tempfile.TemporaryDirectory() as scratch:
         root = Path(scratch)
-        dbfile = root / "database.dump"
-        if vendor == "sqlite":
-            connection.ensure_connection()
-            backup = sqlite3.connect(dbfile)
-            try:
-                connection.connection.backup(backup)
-            finally:
-                backup.close()
-        else:
-            env, args = pg_environment()
-            subprocess.run(
-                [
-                    os.environ.get("PG_DUMP", "pg_dump"),
-                    *args,
-                    *pg_application_tables(),
-                    "-Fc",
-                    "-f",
-                    str(dbfile),
-                    settings.DATABASES["default"]["NAME"],
-                ],
-                env=env,
-                check=True,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-            )
-        manifest = {"version": 1, "database": vendor, "assets": []}
-        if vendor == "postgresql":
-            manifest["database_scope"] = "django-public-tables"
-        with tarfile.open(root / "bundle.tar.gz", "w:gz") as bundle:
-            bundle.add(dbfile, arcname="database.dump")
-            for asset in Asset.objects.order_by("pk"):
-                target = root / "asset"
-                signature = hashlib.sha256()
-                with asset.file.open("rb") as inp, target.open("wb") as out:
-                    for chunk in iter(lambda: inp.read(1024 * 1024), b""):
-                        signature.update(chunk)
-                        out.write(chunk)
-                if signature.hexdigest() != asset.sha256:
-                    raise ValueError("Original file digest does not match the database.")
-                member = f"objects/{asset.pk}"
-                bundle.add(target, arcname=member)
-                manifest["assets"].append(
-                    {
-                        "id": asset.pk,
-                        "path": asset.file.name,
-                        "sha256": asset.sha256,
-                        "member": member,
-                    }
-                )
-            metadata = root / "manifest.json"
-            metadata.write_text(json.dumps(manifest), encoding="utf-8")
-            bundle.add(metadata, arcname="manifest.json")
+        with postgres_asset_snapshot() if lock_assets else nullcontext():
+            write_archive(root, vendor, lock_assets)
         encrypt(root / "bundle.tar.gz", destination)
+
+
+def write_archive(root, vendor, lock_assets):
+    dbfile = root / "database.dump"
+    if vendor == "sqlite":
+        connection.ensure_connection()
+        backup = sqlite3.connect(dbfile)
+        try:
+            connection.connection.backup(backup)
+        finally:
+            backup.close()
+    else:
+        env, args = pg_environment()
+        subprocess.run(
+            [
+                os.environ.get("PG_DUMP", "pg_dump"),
+                *args,
+                *pg_application_tables(),
+                "-Fc",
+                "-f",
+                str(dbfile),
+                settings.DATABASES["default"]["NAME"],
+            ],
+            env=env,
+            check=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+    manifest = {"version": 1, "database": vendor, "assets": []}
+    if lock_assets:
+        manifest["consistency"] = "asset-table-share-lock"
+    if vendor == "postgresql":
+        manifest["database_scope"] = "django-public-tables"
+    with tarfile.open(root / "bundle.tar.gz", "w:gz") as bundle:
+        bundle.add(dbfile, arcname="database.dump")
+        for asset in Asset.objects.order_by("pk"):
+            target = root / "asset"
+            signature = hashlib.sha256()
+            with asset.file.open("rb") as inp, target.open("wb") as out:
+                for chunk in iter(lambda: inp.read(1024 * 1024), b""):
+                    signature.update(chunk)
+                    out.write(chunk)
+            if signature.hexdigest() != asset.sha256:
+                raise ValueError("Original file digest does not match the database.")
+            member = f"objects/{asset.pk}"
+            bundle.add(target, arcname=member)
+            manifest["assets"].append(
+                {
+                    "id": asset.pk,
+                    "path": asset.file.name,
+                    "sha256": asset.sha256,
+                    "member": member,
+                }
+            )
+        metadata = root / "manifest.json"
+        metadata.write_text(json.dumps(manifest), encoding="utf-8")
+        bundle.add(metadata, arcname="manifest.json")
 
 
 def restore_bundle(source):

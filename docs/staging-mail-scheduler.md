@@ -96,8 +96,11 @@ FROM cron.job WHERE jobname = 'pdc-staging-mail';
 SELECT cron.unschedule('pdc-staging-mail');
 ```
 
-After removing the job, remove its three named Vault entries and revoke its Vercel
-automation credential. Remove the operator function if no longer needed. Do not
+The [independent readiness monitor](offsite-backups.md#independent-monitoring-and-recovery)
+also uses `pdc_staging_vercel_bypass`. Stop/reconfigure that monitor before
+removing a shared Vault entry or revoking the credential. After stopping all
+consumers, remove unused mail Vault entries and revoke unused credentials.
+Remove the operator function if no longer needed. Do not
 drop shared extensions or restore anonymous networking access blindly. No
 production queue, global GitHub dispatcher variable or main-branch change is
 needed for this staging setup.

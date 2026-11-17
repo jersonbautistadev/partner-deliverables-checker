@@ -6,17 +6,28 @@ import sys
 import tempfile
 import json
 import tarfile
+import threading
 from types import SimpleNamespace
 from unittest.mock import patch
 from unittest import skipUnless
 
 from cryptography.exceptions import InvalidTag
-from django.test import SimpleTestCase
+from django.core.management import call_command, CommandError
+from django.db import connection, connections, DatabaseError, transaction
+from django.test import SimpleTestCase, TransactionTestCase
 
-from checker.backup import decrypt, encrypt, pg_environment, pg_application_tables
+from checker.backup import decrypt, encrypt, make_bundle, pg_environment, pg_application_tables, postgres_asset_snapshot
 
 
 class RecoveryTests(SimpleTestCase):
+    def test_online_backup_mode_refuses_sqlite_before_writing(self):
+        with tempfile.TemporaryDirectory() as folder, patch(
+            "checker.management.commands.backup_bundle.connection", SimpleNamespace(vendor="sqlite")
+        ):
+            with self.assertRaisesMessage(CommandError, "requires PostgreSQL"):
+                call_command("backup_bundle", "--lock-assets", "--directory", folder)
+            self.assertEqual(list(Path(folder).iterdir()), [])
+
     def test_legacy_whole_postgres_backup_is_rejected_before_restore_writes(self):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
@@ -251,3 +262,83 @@ class RecoveryTests(SimpleTestCase):
             [sys.executable, "scripts/rehearse_pg_recovery.py"], capture_output=True, text=True
         )
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+
+@skipUnless(connection.vendor == "postgresql", "PostgreSQL table locking required.")
+class PostgresAssetSnapshotTests(TransactionTestCase):
+    def setUp(self):
+        from django.contrib.auth import get_user_model
+        from checker.models import Asset, Package, Partner, Workspace
+
+        user = get_user_model().objects.create_user("snapshot_fixture")
+        workspace = Workspace.objects.create(name="Snapshot fixture", created_by=user)
+        partner = Partner.objects.create(workspace=workspace, name="Snapshot fixture partner")
+        package = Package.objects.create(partner=partner, owner=user, stage="pre", title="Snapshot fixture")
+        self.asset = Asset.objects.create(
+            package=package, slot="article", file="snapshot-fixture.txt",
+            original_name="original.txt", sha256="0" * 64, size=1, metadata={}, uploaded_by=user,
+        )
+
+    def test_snapshot_allows_reads_blocks_changes_and_releases_lock(self):
+        from checker.models import Asset
+
+        observed = {}
+
+        def writer():
+            try:
+                observed["read"] = Asset.objects.get(pk=self.asset.pk).original_name
+                with transaction.atomic():
+                    with connections["default"].cursor() as cursor:
+                        cursor.execute("SET LOCAL lock_timeout = '100ms'")
+                    Asset.objects.filter(pk=self.asset.pk).update(original_name="concurrent.txt")
+                observed["changed"] = True
+            except DatabaseError as error:
+                observed["sqlstate"] = getattr(error.__cause__, "sqlstate", None)
+            finally:
+                connections["default"].close()
+
+        with postgres_asset_snapshot():
+            worker = threading.Thread(target=writer)
+            worker.start()
+            worker.join(timeout=5)
+            self.assertFalse(worker.is_alive())
+            self.assertEqual(observed, {"read": "original.txt", "sqlstate": "55P03"})
+            self.asset.refresh_from_db()
+            self.assertEqual(self.asset.original_name, "original.txt")
+        Asset.objects.filter(pk=self.asset.pk).update(original_name="after-backup.txt")
+        self.asset.refresh_from_db()
+        self.assertEqual(self.asset.original_name, "after-backup.txt")
+
+    def test_failed_snapshot_releases_its_lock(self):
+        from checker.models import Asset
+
+        with self.assertRaisesMessage(RuntimeError, "capture failed"):
+            with postgres_asset_snapshot():
+                raise RuntimeError("capture failed")
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "SELECT count(*) FROM pg_locks WHERE pid = pg_backend_pid() "
+                "AND relation = %s::regclass AND mode = 'ShareLock' AND granted",
+                [Asset._meta.db_table],
+            )
+            self.assertEqual(cursor.fetchone()[0], 0)
+        Asset.objects.filter(pk=self.asset.pk).update(original_name="after-failure.txt")
+        self.asset.refresh_from_db()
+        self.assertEqual(self.asset.original_name, "after-failure.txt")
+
+    def test_snapshot_refuses_an_ambient_transaction(self):
+        with transaction.atomic():
+            with self.assertRaisesMessage(ValueError, "outside an existing transaction"):
+                with postgres_asset_snapshot():
+                    self.fail("A nested snapshot must not start.")
+
+    def test_lost_database_session_cannot_publish_a_bundle(self):
+        with (
+            tempfile.TemporaryDirectory() as folder,
+            patch.dict(os.environ, {"BACKUP_ENCRYPTION_KEY": base64.urlsafe_b64encode(os.urandom(32)).decode()}),
+            patch("checker.backup.write_archive", side_effect=lambda *args: connection.close()),
+        ):
+            target = Path(folder) / "lost-session.pdc"
+            with self.assertRaises(DatabaseError):
+                make_bundle(target, lock_assets=True)
+            self.assertFalse(target.exists())
