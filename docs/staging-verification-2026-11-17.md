@@ -98,8 +98,9 @@ not claim visual focus-outline verification. Existing focus CSS remains.
   access. Scheduled mail and readiness runs at 13:58, 14:00 and 14:02 UTC
   succeeded; the mail queue was empty at the final check.
 - A separate missed-ping drill reached Down; the owner **confirmed receipt of
-  its Gmail failure alert**. Recovery was acknowledged and the drill was paused;
-  recipient recovery receipt is pending.
+  its Gmail failure alert**. Recovery was acknowledged and the drill was paused.
+  The owner subsequently **confirmed receiving the Gmail recovery notification**,
+  completing recipient verification of both failure and recovery delivery.
 - Observed B2 caps: $0 storage (10 GB), $0 daily download (1 GB), 2,500 daily
   Class B/C operations, owner email alerts enabled. A 3 GiB prefix budget guards
   publication. The console-generated key is bucket/prefix scoped but includes
@@ -148,8 +149,8 @@ or deleted. Those statuses are distinct from the passing active project and
 quality workflows; repository-wide aggregate status is therefore not all green.
 The owner should confirm which duplicate integrations may be disconnected.
 
-Pending: owner confirmation of the recovery notification; normal overnight
-observation; PR review; production-specific operations/rehearsal, policy/capacity
+Pending: normal overnight observation; PR review;
+production-specific operations/rehearsal, policy/capacity
 review and explicit launch approval. Recovery-key copies exist in encrypted
 Actions secrets and local DPAPI, outside B2; independent decryption of the runner
 bundle confirmed matching keys. Maintain owner account recovery and preferably
