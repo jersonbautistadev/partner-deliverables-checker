@@ -67,10 +67,13 @@ still threaten retained copies. Object Lock/WORM protection was not enabled or
 verified. Prefer a custom minimal-capability key when provisioning a production
 account; verify its actual ACL/lifecycle/list-version/read/write API access.
 
-Keep a recovery copy of `BACKUP_ENCRYPTION_KEY` outside both B2 and this laptop,
-for example in the owner's password manager. Keep an old key while its backups
-remain retained. A DPAPI-only copy on one Windows machine is insufficient for
-disaster recovery. External recovery-key custody must be confirmed before launch.
+Keep `BACKUP_ENCRYPTION_KEY` outside B2 and the web runtime. Staging retains it in
+GitHub's encrypted Actions secret store as well as a local Windows DPAPI copy.
+The hosted runner used that stored key to create a B2 bundle that independently
+decrypted with the recovery copy, verifying matching key custody across machines.
+Maintain GitHub account recovery and preferably an additional owner-controlled
+password-manager/offline copy. A DPAPI-only copy is insufficient. Keep an old key
+while its backups remain retained. Losing every usable key makes recovery impossible.
 
 ## GitHub runner and nightly dispatch
 
@@ -97,6 +100,13 @@ not a completed backup. If the reviewed branch is removed, retarget and rehearse
 the workflow and dispatcher together. Disabling the cron job or repository
 variable stops new runs without deleting backups. Token expiry/invalid settings
 must produce a missed-backup alert.
+
+On 17 November the operator completed both a manual dispatch and an actual timed
+cron dispatch. Both hosted backup jobs succeeded and their B2 bundles were
+independently authenticated/decrypted and all five originals checked. The daily
+schedule above is now **active** for staging. This is evidence of the timed
+rehearsal, not a claim that future nightly runs already occurred. Both the B2 key
+and fine-grained GitHub token expire **15 February 2027**; rotate them beforehand.
 
 ## Independent monitoring and recovery
 

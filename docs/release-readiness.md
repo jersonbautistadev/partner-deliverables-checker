@@ -8,8 +8,9 @@ flows passed. Current local SQLite/PostgreSQL suites each passed 142 tests.
 A real encrypted Backblaze copy restored into a fresh managed database/private
 prefix, including original downloads for both roles. Independent readiness
 monitoring is active and the owner received a missed-job Gmail alert. Current
-operator code still requires its pushed CI/Actions runner and nightly schedule
-rehearsal. Production-specific configuration/dispatch, policy/capacity review and
+operator code passed hosted CI, manual and actual timed backup dispatch, and
+independent bundle decryption. Nightly staging backup is active at 02:17 Manila.
+Production-specific configuration/dispatch, policy/capacity review and
 explicit launch approval remain gates. See [off-site operations](offsite-backups.md).
 
 ## Historical 15 November checkpoint

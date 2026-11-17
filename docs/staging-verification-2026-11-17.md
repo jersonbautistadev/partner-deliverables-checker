@@ -95,7 +95,8 @@ not claim visual focus-outline verification. Existing focus CSS remains.
 - Actual protected `/ready/` JSON and Healthchecks acknowledgement passed.
   Separate two-minute readiness monitoring was activated. Mail delivery was not
   stopped. API/runtime/migration roles were denied private function/Vault/network
-  access. Scheduled-readiness history remains to be checked after installation.
+  access. Scheduled mail and readiness runs at 13:58, 14:00 and 14:02 UTC
+  succeeded; the mail queue was empty at the final check.
 - A separate missed-ping drill reached Down; the owner **confirmed receipt of
   its Gmail failure alert**. Recovery was acknowledged and the drill was paused;
   recipient recovery receipt is pending.
@@ -105,22 +106,79 @@ not claim visual focus-outline verification. Existing focus CSS remains.
   deletion. No append-only/Object Lock claim is made.
 - A dedicated fine-grained Actions read/write token was created for this one
   repository only, with required metadata read and expiry 15 February 2027.
-  It is stored privately; Vault provisioning/nightly activation are pending.
+  It was installed in staging Vault. All four untrusted roles were denied
+  private function/Vault/network access.
+- [Manual hosted backup](https://github.com/jersonbautistadev/partner-deliverables-checker/actions/runs/44098488721)
+  succeeded using the new Linux runner, hash-locked clean installation and
+  PostgreSQL container client. Production mail and maintenance jobs were skipped.
+- Actual cron dispatch at **14:03:00 UTC** succeeded and its
+  [hosted backup job](https://github.com/jersonbautistadev/partner-deliverables-checker/actions/runs/44098896465)
+  completed successfully. Both runner-produced B2 versions independently
+  authenticated/decrypted with the recovery key, with all five original hashes
+  checked. At that check B2 held three versions totaling 74,754 bytes.
+- Nightly backup was then activated at **18:17 UTC / 02:17 Asia/Manila**;
+  read-back confirmed that schedule and both two-minute jobs active. Healthchecks
+  reported backup/readiness Up and the drill Paused. Its first nightly occurrence
+  is future work for the scheduler, not an executed result in this record.
+- Anonymous branch `/ready/` redirected to Vercel's HTTPS `/sso-api`; the same
+  endpoint with the private protection header returned actual ready JSON, 200.
+  Original account roles, five assets and three reviews remained intact.
 
 ## Automated verification and remaining gates
 
 Current local results: **142 tests**, SQLite **OK, seven PostgreSQL-only skips,
 92.070 s**; native PostgreSQL 17.12 **OK, no skips, 114.439 s**. Ruff, whitespace
-checks and both workflow YAML parses passed. Hosted CI for `f05730c` passed
-[previously](https://github.com/jersonbautistadev/partner-deliverables-checker/actions/runs/43882761807);
-it does not verify the new uncommitted operator changes. CI container builds do
-not constitute a full Compose HTTPS rehearsal, which was not run.
+checks and both workflow YAML parses passed. Django checks, migration consistency,
+static collection, dependency audit (no known vulnerabilities) and production
+fixture checks also passed locally.
 
-Pending: push/review current changes and execute their hosted CI/backup job;
-provision Vault and activate/test nightly dispatch; confirm recovery notification
-receipt and external recovery-key custody; production-specific operations,
-policy/capacity review and explicit launch approval. No paid resources, main
-merge, production configuration change or public launch was performed.
+Hosted CI for application/operator commit **4212084** passed on
+[push](https://github.com/jersonbautistadev/partner-deliverables-checker/actions/runs/44098442431)
+and [pull request](https://github.com/jersonbautistadev/partner-deliverables-checker/actions/runs/44098454334),
+including Linux PostgreSQL recovery, dependency checks, production fixture checks
+and all three container builds. CI builds do not constitute a full Compose HTTPS
+rehearsal, which was not run. Subsequent evidence-only documentation edits do not
+change the tested application/operator code.
 
-Decision: the hosted staging app workflows and remote off-site recovery above
-passed. Scheduling work is partially verified. Public launch remains **no-go**.
+The active Vercel project `partner-deliverables-checker-puux` also reported a
+[successful preview build for 4212084](https://vercel.com/jello3/partner-deliverables-checker-puux/67jaPSxfXwvDD6EgvL49GTcdWQ6o).
+Three pre-existing duplicate Vercel projects attached to the repository still
+reported failed deployment statuses. Their integrations/settings were not changed
+or deleted. Those statuses are distinct from the passing active project and
+quality workflows; repository-wide aggregate status is therefore not all green.
+The owner should confirm which duplicate integrations may be disconnected.
+
+Pending: owner confirmation of the recovery notification; normal overnight
+observation; PR review; production-specific operations/rehearsal, policy/capacity
+review and explicit launch approval. Recovery-key copies exist in encrypted
+Actions secrets and local DPAPI, outside B2; independent decryption of the runner
+bundle confirmed matching keys. Maintain owner account recovery and preferably
+another offline/password-manager key copy. Main's remote hash remained
+`e3280e42e395f9622779a96ba58a552fd6defd77`. No paid resource, main merge,
+production configuration change or public launch was performed.
+
+Decision: **staging acceptance and its backup/monitoring rehearsal passed**.
+Public launch remains **no-go** pending the production gates above.
+
+## Files changed in this operations follow-up
+
+- `.github/workflows/mail-delivery.yml`
+- `checker/backup.py`
+- `checker/management/commands/backup_bundle.py`
+- `checker/management/commands/backup_offsite.py`
+- `checker/monitoring.py`
+- `checker/offsite.py`
+- `checker/tests_offsite.py`
+- `checker/tests_recovery.py`
+- `scripts/rehearse_recovery.py`
+- `deploy/backup.env.example`
+- `deploy/staging-backup-cron.sql`
+- `deploy/staging-readiness-cron.sql`
+- `docs/deployment.md`
+- `docs/operations.md`
+- `docs/offsite-backups.md`
+- `docs/staging-mail-scheduler.md`
+- `docs/staging-verification-2026-11-16.md`
+- `docs/staging-verification-2026-11-17.md`
+- `docs/release-readiness.md`
+- `docs/verification.md`
