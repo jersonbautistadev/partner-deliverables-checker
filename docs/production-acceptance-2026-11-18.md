@@ -1,10 +1,10 @@
 # Production acceptance: 18 November 2026
 
-Decision: **go for the bounded educational pilot, pending explicit public-access
-approval**. Protected staging and production acceptance passed; public access
-has not been enabled.
-The application remains behind Vercel Authentication for all deployments. Main
-is unchanged. This record supplements the [rollout history](production-rollout-2026-11-18.md)
+Decision: **go for the bounded educational pilot**. Protected staging and
+production acceptance passed. The owner subsequently approved public access;
+the [verified launch](public-pilot-launch-2026-11-18.md) opened the production
+domain while retaining preview protection. Main is unchanged.
+This record supplements the [rollout history](production-rollout-2026-11-18.md)
 and distinguishes production evidence from earlier staging and fixture tests.
 
 ## Accounts, workspaces and mail
@@ -141,7 +141,8 @@ membership-removal regression tests are covered by automated tests; this live
 production run exercised coordinator transfer and blocked unsafe deactivation,
 without deleting the acceptance accounts.
 
-Public access still requires the owner's explicit approval. Keep the staging
+The owner approved public access after this acceptance; see the launch record.
+Keep the staging
 branch while its scheduler/backup workflow references it. Do not remove fixtures,
 earlier recovery targets or backups as part of launch without a separate scoped
 cleanup decision.

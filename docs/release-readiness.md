@@ -1,7 +1,8 @@
 # Public release readiness
 
-Current decision: **staging and restricted production acceptance passed; go for
-the bounded educational pilot pending explicit owner approval to open access**.
+Current decision: **staging and production acceptance passed; the owner-approved
+bounded educational pilot is public**. [Launch evidence](public-pilot-launch-2026-11-18.md)
+records anonymous account-page, private-data and protected-preview checks.
 The [18 November production acceptance](production-acceptance-2026-11-18.md)
 is the latest evidence, following the [rollout history](production-rollout-2026-11-18.md)
 and [17 November staging acceptance](staging-verification-2026-11-17.md).
@@ -22,11 +23,11 @@ restore passed ten matching downloads and ten wrong-workspace denials across
 both roles. All four independent production monitors
 were up. Staging backup remains active at 02:17 Manila.
 
-The site remains protected and main is unchanged. Two preserved acceptance teams
+Previews remain protected and main is unchanged. Two preserved acceptance teams
 consume two of the five pilot workspace slots. See the acceptance record for
 limits, non-executed checks and file-security limitations, and [off-site operations](offsite-backups.md)
-for scheduling, rotation and recovery. No public-access or paid-plan approval is
-implied by these results.
+for scheduling, rotation and recovery. Public access was explicitly approved;
+no paid-plan approval is implied.
 
 ## Historical 15 November checkpoint
 
@@ -55,21 +56,21 @@ The editorial frontend was retained. Account/team forms share its typography, re
 
 Full timings, commands and limitations: [verification](verification.md).
 
-## Current launch gate and operating follow-ups
+## Operating follow-ups after launch
 
 | Blocker | Impact | Required input/action |
 | --- | --- | --- |
-| Public access | The verified candidate is protected by Vercel Authentication. | Explicit owner approval is required before opening the pilot. |
-| Final release checks | Actual production build checks, both full CI runs and five-original recovery passed. | Review the acceptance record and approve or defer public access. |
+| Public access | Owner-approved public production routes and protected previews were verified. | Monitor the bounded pilot; retain Django authentication for private data. |
+| Final release checks | Actual production build checks, both full CI runs and five-original recovery passed. | Retain the evidence and repeat affected checks for upgrades. |
 | Pilot capacity | Two acceptance teams consume two of five workspace slots; sustained load is unmeasured. | Keep the finite pilot caps; any fixture removal needs a separately scoped cleanup decision. |
 | Operations | All five production jobs are enabled; manual maintenance passed. | Inspect the first normal daily maintenance run and rotate expiring credentials on the documented dates. |
 | Legacy integrations | Three duplicate Vercel integrations report failure separately from the active project. | Decide whether to disconnect them; no legacy project was deleted during this work. |
 | Optional Linux/Compose target | Compose configuration and three images built in CI; full HTTPS service rehearsal was not run. | Rehearse this alternative if choosing it instead of the verified Vercel target. |
 
 Keep keys/passwords out of chat/source. Free-tier eligibility, quotas, costs and
-availability depend on the chosen services. No paid resources or public launch
-were initiated. Real test emails and the precisely scoped production cleanups
-were executed only after explicit owner approvals.
+availability depend on the chosen services. No paid resources were enabled.
+Public access was opened, and real test emails and the precisely scoped
+production cleanups were executed, only after explicit owner approvals.
 
 ## Assumptions and product boundaries
 
@@ -81,7 +82,7 @@ were executed only after explicit owner approvals.
 - S3/SMTP have automated coverage and actual hosted acceptance evidence. SMTP is at least once: an interruption after provider acceptance can produce duplicates.
 - No complete assistive-technology audit, sustained hosted-load test, destructive in-place production rollback or security certification is claimed. Actual hosted CI and isolated recovery results are linked above.
 
-Approve public access only after the final [production acceptance](production-acceptance-2026-11-18.md) decision. Keep the deployment restricted until that explicit approval.
+The public pilot opened after the final [production acceptance](production-acceptance-2026-11-18.md) decision and explicit owner approval. Reassess capacity and deployment requirements before expanding beyond this educational pilot.
 
 ## Changed-file manifest
 

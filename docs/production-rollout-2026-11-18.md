@@ -1,9 +1,11 @@
 # Production rollout: 18 November 2026
 
-Latest evidence: [production acceptance](production-acceptance-2026-11-18.md).
+Latest evidence: [approved public launch](public-pilot-launch-2026-11-18.md) and
+[production acceptance](production-acceptance-2026-11-18.md).
 That record supersedes the historical pending steps below: production mail,
 verification, reset, invitations, workspace/file/review acceptance and approved
-maintenance have now been exercised. Public access remains protected.
+maintenance have now been exercised. The owner-approved production pilot is
+public; previews remain protected. The entries below are historical checkpoints.
 
 Status: **in progress, no public-launch readiness claim**. Branch
 `fix/dev-team-release-gaps`; main has not been changed during this checkpoint.
