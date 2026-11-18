@@ -84,10 +84,44 @@ Production limits of five workspaces and 100 SMTP attempts/day, plus a separate
 New settings require a deployment; production enforcement has not been verified.
 The existing write-only staging SMTP credential remains restricted to its branch;
 no credential was revealed or broadened to all Preview branches.
-Six independent production runner secrets and its reviewed branch reference
-were saved to GitHub. `ENABLE_PRODUCTION_BACKUP` remains false; destination
-credentials are not configured. Four production Healthchecks checks exist but
-remain unarmed. Neither step proves production execution or alert delivery.
+Eight production runner secrets and destination/ref variables are now configured
+in GitHub, separately from staging. Production backup is enabled and verified
+as described below. Backup/capacity monitors are up; readiness/maintenance checks
+remain unarmed pending the new production app and mail setup.
+
+## Provider setup and actual protection correction
+
+Private provider verification/sign-in completed. The temporary replacement Vercel
+token is limited to this project and one day; the earlier unused setup token was
+deleted. Existing production database/S3/Django credentials were also scoped to
+general Preview deployments. Their scopes were narrowed to Production, keeping
+the four dedicated staging overrides. All ten ready Previews in the deployment
+inventory were on the staging branch and were created after those overrides;
+this is configuration evidence, not a claim that every historical runtime was
+forensically examined.
+
+An actual anonymous request found an incorrect earlier assumption: the legacy
+`all_except_custom_domains` setting left the production domain accessible (200).
+It was changed to `ssoProtection.deploymentType=all`; anonymous production health
+and sign-in now redirect to Vercel (302), while the project-scoped operator bypass
+works. No plan upgrade was made. Vercel's
+[9 September change](https://vercel.com/changelog/protect-production-deployments-for-free-on-every-plan)
+made this scope free on all plans. Earlier descriptions of protected production
+were inaccurate; protected **staging** acceptance remains valid.
+
+Vercel rejected adding Production to the existing branch-restricted SMTP Secret.
+Its value was not read. A separate Production-only password field is prepared
+for the owner's private entry; the other nine SMTP/proxy settings are saved.
+Provider settings alone do not verify production mail or application workflows.
+
+The private production B2 bucket has provider encryption, Object Lock disabled
+and `production/` lifecycle retention of seven days before hiding plus one day
+before deleting hidden versions. A separate bucket/prefix-restricted read/write
+key lasts 90 days (rotate before 16 February 2027). It is not an append-only/WORM
+key. Production uses a distinct AES key. The project-scoped Vercel bypass and
+repository-scoped Actions dispatch credential are intentionally shared with
+staging; rotate those consumers together. The Actions credential expires
+15 February 2027. Neither backup credentials nor AES keys are in the web runtime.
 
 ## Production baseline and upgrade recovery
 
@@ -112,27 +146,43 @@ records in all 22 application/shared tables matched. Django appropriately added
 one heartbeat content type and its four permissions. Provider cron/Vault schemas
 were absent; restored workers remained off. Prior recovery targets were preserved.
 
-Two queued messages (IDs 1 and 2) were matched to expired verification tokens.
-A cleanup is prepared and dry-run only. It requires explicit owner approval and
-verified off-site backup before deleting those two queue rows. Accounts and other
-records are outside its scope. **No cleanup or production migration has run at
-this checkpoint.**
+The pre-upgrade bundle was uploaded to the separate private production B2 bucket.
+Its exact version was fully downloaded for ciphertext checksum verification and
+authenticated with the production AES key. Only after that check and the owner's
+explicit approval did the guarded cleanup remove **exactly queued verification
+rows 1 and 2**, whose links were expired. Both accounts and other records remain.
+Migration 0004 then applied successfully using the migration role. Production has
+two unverified accounts, zero workspaces/assets and no pending mail at that check.
+
+The real hosted production backup runner
+[passed](https://github.com/jersonbautistadev/partner-deliverables-checker/actions/runs/44259719379).
+Its 14,152-byte bundle independently downloaded, authenticated and restored into
+a fresh managed database/private prefix on staging infrastructure. All 24
+application/migration tables matched when read by the ordinary runtime role;
+provider cron/Vault schemas were absent. This bundle has **zero originals**, so
+it does not establish production original-file download recovery. Staging's
+five-original/six-download recovery remains the file evidence.
+
+All five production operator functions compiled against the actual provider;
+four untrusted roles were denied networking, Vault and operator execution.
+Capacity queries and independent monitor acknowledgement succeeded. A real
+timed production cron dispatch ran at **07:37 UTC** and its
+[hosted backup run passed](https://github.com/jersonbautistadev/partner-deliverables-checker/actions/runs/44260277401).
+Nightly backup is active at 18:47 UTC / 02:47 Manila; capacity runs every 15
+minutes. Mail/readiness/maintenance remain paused until their actual contracts
+are verified against the new production app.
 
 ## Remaining rollout steps
 
-1. Complete private Vercel identity verification and Backblaze sign-in.
-2. Verify the pre-upgrade backup off-site; provision separate production backup
-   storage/credentials, source guards and independent monitoring.
-3. Apply the additive migration with the migration role, handle the two expired
-   queue rows only if approved, configure production SMTP/origins/contact/caps,
-   and verify migration/runtime/storage permissions.
-4. Pass hosted CI and protected preview checks for the new code. Review the
-   concrete diff before merging. Keep the staging branch while its scheduler
-   still references it.
-5. Rehearse the production backup runner and schedulers; enable mail only after
-   reviewing its queue. Verify actual owner email receipt and production account,
-   workspace, upload/download, security-header and browser flows.
-6. Confirm public-access approval and remaining provider/support/capacity
+1. Finish the private Production-only SMTP password entry.
+2. Review/pass the updated branch and deploy its source with production still
+   protected. Keep the staging branch while its scheduler references it.
+3. Verify production runtime/storage permissions and actual mail, readiness and
+   maintenance contracts before activating those jobs. Verify approved owner
+   email receipt, account/workspace/file/review flows and browser layouts.
+4. Rehearse the production off-site backup/restore with actual original files
+   created through the acceptance flow, including authorized downloads.
+5. Confirm public-access approval and remaining provider/support/capacity
    decisions before exposing the pilot. Do not upgrade any paid plan.
 
 Production scheduler SQL installs five paused jobs: mail/readiness every two

@@ -1,7 +1,56 @@
 # Private off-site backups and failure alerts
 
-This is staging operator configuration, separate from public launch approval.
+This covers operator configuration, separate from public launch approval.
+Staging acceptance and the current production checkpoint are distinguished in
+[the rollout record](production-rollout-2026-11-18.md). Never apply a staging-only
+scheduler SQL file or its source credentials to production.
 The web function does not receive backup credentials or the encryption key.
+
+## Production setup and recovery
+
+The `production-backup` Actions job uses its own `PRODUCTION_*` secrets: runner
+Django key, migration-role database URL, source S3 access/secret keys, AES key,
+destination S3 access/secret keys and private backup Healthchecks URL. Repository
+variables supply `PRODUCTION_BACKUP_REF`, destination endpoint/region/bucket and
+`ENABLE_PRODUCTION_BACKUP`. Keep the gate false until privacy/retention/source
+guards pass. The production file prefix is `production/`, with a separate 3 GiB
+budget; staging and production still share the account-wide free allowances.
+
+`deploy/production-operations.sql` is installed with the dedicated production
+provider administrator after backup/migration checks. It installs **five paused
+jobs**. Provision these Vault names privately before invoking functions:
+
+- `pdc_production_origin`, `pdc_production_ops_secret`,
+  `pdc_production_vercel_bypass`.
+- `pdc_production_readiness_ping`, `pdc_production_maintenance_ping`,
+  `pdc_production_capacity_ping`.
+- `pdc_production_actions_token`, `pdc_production_backup_ref`.
+
+The shared project-scoped automation bypass and repository-scoped Actions token
+must be rotated in both environments together. Source/database/S3/AES/destination
+credentials are separate. Never put credentials in SQL source or command history.
+Verify application-role/Vault/networking denials after installation. Invoke and
+check actual acknowledgements before activating each corresponding job. Re-running
+the installation pauses all five again: inspect state and restore only jobs that
+have passed verification. Check runner results and bundle read-back separately;
+a successful GitHub dispatch is not a successful backup.
+
+Current production backup/capacity jobs are active; mail/readiness/maintenance
+remain paused. Do not infer their state from the paused-by-default SQL file.
+Maintenance deletes expired sessions/rate windows, old tokens/queued-mail records
+and its own cron logs older than seven days; it does not delete account/workspace
+history or original files. Review/approve this production retention action before
+enabling it. Audit pruning and orphan-file deletion are separate opt-in actions.
+
+For recovery, retrieve the exact object version from the receipt and verify its
+ciphertext digest, inject the matching AES key outside the storage service, create
+a **new** isolated managed database and empty private-file prefix, migrate it with
+the matching source version, then use `restore_bundle --confirm-empty`. Read all
+application tables with the ordinary runtime role and exercise authorized original
+downloads. Keep mail, provider cron and restored sessions offline until reviewed.
+Never restore over the source or an earlier recovery rehearsal. A zero-original
+bundle proves database recovery only; use an actual original-file bundle for the
+download acceptance gate.
 
 ## Services and limits
 
