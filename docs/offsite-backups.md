@@ -35,8 +35,14 @@ the installation pauses all five again: inspect state and restore only jobs that
 have passed verification. Check runner results and bundle read-back separately;
 a successful GitHub dispatch is not a successful backup.
 
-Current production backup/capacity jobs are active; mail/readiness/maintenance
-remain paused. Do not infer their state from the paused-by-default SQL file.
+Current production backup/capacity/mail/readiness jobs are active; maintenance
+remains paused. Actual production mail/readiness cron succeeded at 12:08 UTC on
+18 November. Do not infer their state from the paused-by-default SQL file.
+The app's Production-only `OPS_SECRET` and Vault's `pdc_production_ops_secret`
+must hold the same credential. On rotation, pause affected jobs, update both,
+rebuild the protected app, and prove an authenticated request succeeds before
+resuming schedules. Metadata existence and a valid credential length do not
+prove authentication; acceptance found and corrected this mismatch.
 Maintenance deletes expired sessions/rate windows, old tokens/queued-mail records
 and its own cron logs older than seven days; it does not delete account/workspace
 history or original files. Review/approve this production retention action before

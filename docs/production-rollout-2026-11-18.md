@@ -212,14 +212,56 @@ No production acceptance emails were sent at this checkpoint. Explicit approval
 for delivery to the owner's existing Gmail/test aliases is pending, following
 the original deployment instruction requiring approval for real emails.
 
+## Production mail and scheduler checkpoint: 12:11 UTC
+
+The owner explicitly approved production verification, reset and invitation
+emails to the existing Gmail inbox and test aliases. Two clearly named production
+acceptance accounts registered through the actual HTTPS forms. Correct passwords
+were rejected before email verification. Existing accounts were preserved.
+
+The first operator mail POST returned 401 before attempting either queued email.
+The private operator credential matched the scheduler Vault value, but the app
+rejected it; Vercel's sensitive value could not be read back for comparison.
+A new production-only machine credential was provisioned consistently in Vercel
+and Vault. Rebuilding the same tested application SHA reached READY as
+`dpl_FRNNq7fCB9F3eMu74nJL1aNcNCsc`. The new credential then authenticated
+successfully. This establishes a corrected operational credential mismatch;
+the origin of the prior drift was not determined. Staging's credential, Django
+signing keys and account passwords were not rotated.
+
+Actual SMTP dispatch handed both verification emails to Gmail, one attempt each.
+Their queue recipients and message bodies were cleared after acknowledgement.
+This is provider acceptance, **not yet inbox receipt or email-confirmation proof**.
+Both new accounts were still unverified at the checkpoint; password-reset,
+invitation and authenticated production workflows remain pending.
+
+Provider-side mail dispatch returned zero with an empty queue. Its actual
+readiness request returned healthy JSON and received the independent monitor's
+acknowledgement. Mail/readiness cron jobs were activated at their normal
+two-minute schedules; both actual timed jobs succeeded at **12:08 UTC**.
+Production readiness now returns 200. Independent backup, capacity and readiness
+checks are up; maintenance remains unarmed and paused pending separate approval.
+The maintenance preview found 20 expired rate windows and no expired sessions,
+old tokens or old mail records. No retention cleanup was executed.
+
+Additional real production checks passed: duplicate signup gave a generic
+acknowledgement without adding accounts, tokens or mail; missing-CSRF submission
+returned 403 with the friendly recovery message; invalid fields rendered their
+errors; the CSRF cookie was Secure and SameSite=Lax. Health/account/pilot/CSS and
+security-header checks passed again, as did anonymous Vercel protection and
+tokenless operations denial. Source remained unchanged; the latest documentation
+commit's [push CI](https://github.com/jersonbautistadev/partner-deliverables-checker/actions/runs/44299964552)
+and [PR CI](https://github.com/jersonbautistadev/partner-deliverables-checker/actions/runs/44299974575)
+also passed. Operator scratch checks, credentials and test passwords remain ignored.
+
 ## Remaining rollout steps
 
-1. Obtain the requested approval for production test emails to the owner inbox
-   and its aliases, then verify SMTP delivery and actual receipt.
+1. Confirm receipt and verification of both production test accounts, then test
+   password reset and invitations. Approved SMTP delivery now works.
 2. Keep production protected and retain the staging branch while its scheduler
    references it. The tested candidate is deployed; main remains unchanged.
-3. Verify production runtime/storage permissions and actual mail, readiness and
-   maintenance contracts before activating those jobs. Verify approved owner
+3. Retain verified mail/readiness schedules. Obtain the separately requested
+   retention approval and verify maintenance before activating that job. Verify owner
    email receipt, account/workspace/file/review flows and browser layouts.
 4. Rehearse the production off-site backup/restore with actual original files
    created through the acceptance flow, including authorized downloads.

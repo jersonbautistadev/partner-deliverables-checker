@@ -9,8 +9,10 @@ flows passed. Current local SQLite/PostgreSQL suites each passed 150 tests
 (nine PostgreSQL-only skips on SQLite). The newer pilot limits/support page
 and production scheduler preparation passed hosted CI. Production's approved
 two-row expired-mail cleanup and additive migration passed after verified off-site
-backup; its hosted/timed backup and database restore passed. Production mail,
-account/file acceptance and original-download recovery remain unverified.
+backup; its hosted/timed backup and database restore passed. The protected
+production candidate built, Gmail accepted two verification emails, and actual
+mail/readiness cron runs succeeded. Inbox receipt, account/file acceptance and
+original-download recovery remain unverified; maintenance awaits separate approval.
 A real encrypted Backblaze copy restored into a fresh managed database/private
 prefix, including original downloads for both roles. Independent readiness
 monitoring is active and the owner received a missed-job Gmail alert. Current
@@ -19,7 +21,7 @@ independent bundle decryption. Nightly staging backup is active at 02:17 Manila.
 Nightly production backup is active at 02:47 Manila and capacity checks run every
 15 minutes. The production domain is now protected by actual anonymous-access
 checks; the prior legacy setting left it public and was corrected. Production
-SMTP/private acceptance and explicit launch approval remain gates.
+email confirmation/private acceptance and explicit launch approval remain gates.
 See [off-site operations](offsite-backups.md).
 
 ## Historical 15 November checkpoint
