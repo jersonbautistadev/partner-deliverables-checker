@@ -4,11 +4,11 @@ A Django application for teams coordinating event media partnerships. It checks 
 
 ## Release status
 
-Public-account and workspace features are implemented. Protected staging passed
-real email/account, workspace isolation, file/review, private-download and off-site
-recovery exercises. Its nightly backup and independent failure/recovery emails
-were verified. Production rollout for a small personal/educational pilot is in
-progress; production-specific gates remain. See [current rollout evidence](docs/production-rollout-2026-11-18.md),
+Public-account and workspace features are implemented. Protected staging and
+production passed real email/account, workspace isolation, file/review and
+private-download exercises. Backup and recovery evidence is recorded separately
+from public-access approval. Production is being finalized for a small
+personal/educational pilot and remains protected. See [current acceptance evidence](docs/production-acceptance-2026-11-18.md),
 [release readiness](docs/release-readiness.md) and [verification](docs/verification.md).
 The [Vercel deployment](https://partner-deliverables-checker-puux.vercel.app) must
 not be described as public-launch ready solely because a build or test passed.
