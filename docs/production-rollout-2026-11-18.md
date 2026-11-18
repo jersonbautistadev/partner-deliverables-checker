@@ -81,7 +81,8 @@ Production preparation exposed additional operational gaps:
 The approved public support config was saved for Production and Preview.
 Production limits of five workspaces and 100 SMTP attempts/day, plus a separate
 25-attempt setting restricted to the staging branch, were saved in Vercel.
-New settings require a deployment; production enforcement has not been verified.
+The protected candidate below now includes these settings; production quota
+enforcement through real account/workspace flows has not yet been verified.
 The existing write-only staging SMTP credential remains restricted to its branch;
 no credential was revealed or broadened to all Preview branches.
 Eight production runner secrets and destination/ref variables are now configured
@@ -172,11 +173,51 @@ Nightly backup is active at 18:47 UTC / 02:47 Manila; capacity runs every 15
 minutes. Mail/readiness/maintenance remain paused until their actual contracts
 are verified against the new production app.
 
+## Protected production candidate: 12:00 UTC checkpoint
+
+Vercel metadata confirmed a separate sensitive `EMAIL_HOST_PASSWORD` variable
+scoped only to Production, with the existing branch-only Preview override
+intact. Its value was not retrieved. Both CI runs for source `0e567e8` passed:
+[push](https://github.com/jersonbautistadev/partner-deliverables-checker/actions/runs/44261179494)
+and [PR](https://github.com/jersonbautistadev/partner-deliverables-checker/actions/runs/44261187213).
+
+An explicit production deployment from that immutable Git SHA reached READY:
+`dpl_4UWMPHnk23MYr6hDaA9CDeQuqbiv`. The canonical production domain now serves
+that candidate. Main remains at `e3280e4`; the staging branch was not merged.
+Vercel Authentication remains set to **all** deployments. Anonymous health and
+sign-in requests redirected to Vercel; authorized operator requests reached the
+app. This is a restricted production rollout, not public-launch approval.
+
+Actual production GETs for health, pilot information, sign-in, signup and
+password-reset forms returned 200. Manifest CSS returned 200; HSTS, nosniff and
+frame-denial headers were present. Tokenless POSTs to both operations endpoints
+returned 401, while GETs returned 405. Readiness returned the expected generic
+503 while the mail dispatcher remains paused. SMTP delivery and receipt have
+not yet been tested in production.
+
+Orca rendered the production sign-in page at 390, 768 and 1200 CSS pixels.
+All three screenshots were viewed and measured document widths equaled viewport
+widths, with no horizontal overflow. This covers the sign-in layout only, not
+the remaining authenticated production acceptance flows.
+
+The runtime PostgreSQL role again connected with verified TLS and retained its
+heartbeat-table grants without privileged role flags. Unsigned production B2
+backup access returned 401. Capacity cron last succeeded at 11:45 UTC; production
+mail, readiness and maintenance jobs remain paused. The first local inspection
+attempt used the system Python without psycopg; rerunning in the existing locked
+environment succeeded. A missing operator environment variable was supplied
+before repeating the runtime check. Neither failed attempt changed remote data.
+
+No production acceptance emails were sent at this checkpoint. Explicit approval
+for delivery to the owner's existing Gmail/test aliases is pending, following
+the original deployment instruction requiring approval for real emails.
+
 ## Remaining rollout steps
 
-1. Finish the private Production-only SMTP password entry.
-2. Review/pass the updated branch and deploy its source with production still
-   protected. Keep the staging branch while its scheduler references it.
+1. Obtain the requested approval for production test emails to the owner inbox
+   and its aliases, then verify SMTP delivery and actual receipt.
+2. Keep production protected and retain the staging branch while its scheduler
+   references it. The tested candidate is deployed; main remains unchanged.
 3. Verify production runtime/storage permissions and actual mail, readiness and
    maintenance contracts before activating those jobs. Verify approved owner
    email receipt, account/workspace/file/review flows and browser layouts.
@@ -222,5 +263,5 @@ service-level guarantee.
   `deploy/staging-readiness-cron.sql`, `deploy/staging-backup-cron.sql`,
   `scripts/rehearse_operations.py`.
 - Documentation: `README.md`, `docs/security.md`, `docs/release-readiness.md`,
-  `docs/verification.md`, this record. Runtime credentials, cookies and operator
+  `docs/verification.md`, `docs/offsite-backups.md`, this record. Runtime credentials, cookies and operator
   scratch/recovery files remain ignored and outside the repository.
