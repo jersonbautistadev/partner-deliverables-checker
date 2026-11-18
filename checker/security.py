@@ -10,7 +10,7 @@ from django.db.models import Sum
 from django.utils import timezone
 from django.utils.crypto import salted_hmac
 
-from checker.models import Asset, RateBucket, Workspace
+from checker.models import Asset, RateBucket, ServiceHeartbeat, Workspace
 from checker.permissions import require_member
 
 
@@ -73,6 +73,22 @@ def count_limit(queryset, setting_name):
         raise LimitExceeded(
             "This workspace has reached its configured usage limit. Contact the operator."
         )
+
+
+def guard_workspace_capacity():
+    """Serialize pilot workspace creation across accounts in the caller's transaction."""
+    limit = settings.MAX_SERVICE_WORKSPACES
+    if not limit:
+        return
+    # This persistent activity row also serializes the count and following insert.
+    # It is distinct from the mail heartbeat and is never pruned as a rate window.
+    ServiceHeartbeat.objects.get_or_create(
+        name="workspace_creation", defaults={"last_seen": timezone.now()}
+    )
+    ServiceHeartbeat.objects.select_for_update().get(name="workspace_creation")
+    if Workspace.objects.count() >= limit:
+        raise LimitExceeded("Pilot workspace capacity has been reached. Contact support before creating another workspace.")
+    ServiceHeartbeat.objects.filter(name="workspace_creation").update(last_seen=timezone.now())
 
 
 def storage_used(workspace):

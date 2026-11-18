@@ -58,6 +58,14 @@ jobs:
           PG_DUMP: .runtime/pg_dump
           PG_RESTORE: .runtime/pg_restore
       - run: python manage.py collectstatic --noinput
+      - name: Operator SQL contracts with isolated PostgreSQL boundary fixtures
+        run: python scripts/rehearse_operations.py
+        env:
+          POSTGRES_HOST: localhost
+          POSTGRES_PORT: "5432"
+          POSTGRES_USER: deliverables
+          POSTGRES_PASSWORD: ci-only-password
+          POSTGRES_DB: deliverables
       - name: Production configuration checks (fixture settings)
         run: python manage.py check --deploy --fail-level WARNING
         env:
@@ -72,6 +80,7 @@ jobs:
           POSTGRES_DB: deliverables
           EMAIL_HOST: smtp.example.test
           DEFAULT_FROM_EMAIL: noreply@example.test
+          PUBLIC_SUPPORT_EMAIL: support@example.test
           OPS_SECRET: ci-only-operations-secret-not-a-production-key
       - name: Container build and Compose configuration
         env:
@@ -82,6 +91,7 @@ jobs:
           POSTGRES_USER: deliverables
           POSTGRES_PASSWORD: ci-only-password
           APP_DOMAIN: staging.example.test
+          PUBLIC_SUPPORT_EMAIL: support@example.test
           EMAIL_HOST: smtp.example.test
           DEFAULT_FROM_EMAIL: noreply@example.test
           OPS_SECRET: ci-only-operations-secret-not-a-production-key

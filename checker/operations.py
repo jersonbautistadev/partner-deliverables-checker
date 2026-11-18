@@ -9,7 +9,7 @@ from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_POST
 
-from checker.mail import deliver_batch
+from checker.mail import deliver_batch, mail_capacity_wait
 from checker.models import MailJob, ServiceHeartbeat
 
 logger = logging.getLogger(__name__)
@@ -38,6 +38,9 @@ def readiness(request):
             ).exists():
                 raise RuntimeError("mail dispatcher unavailable")
         dependency = "mail_queue"
+        if MailJob.objects.filter(sent_at__isnull=True).exists() and mail_capacity_wait():
+            dependency = "mail_capacity"
+            raise RuntimeError("mail capacity unavailable")
         stale = MailJob.objects.filter(
             sent_at__isnull=True, created_at__lt=now - timezone.timedelta(seconds=settings.MAIL_HEALTH_MAX_AGE_SECONDS)
         ).exists()

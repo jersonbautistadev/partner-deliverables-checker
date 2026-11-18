@@ -1,9 +1,10 @@
 # Verification record
 
-Latest evidence: [17 November 2026 staging acceptance and operations](staging-verification-2026-11-17.md),
+Latest evidence: [18 November 2026 pilot rollout preparation](production-rollout-2026-11-18.md),
+following [17 November staging acceptance and operations](staging-verification-2026-11-17.md),
 following the [dev-team fixes](dev-team-fixes-2026-11-16.md) and
-[audit](dev-team-audit-2026-11-16.md). Current local suites passed 142 tests on
-SQLite and PostgreSQL; real hosted role/file/review flows and remote recovery
+[audit](dev-team-audit-2026-11-16.md). Current local suites passed 150 tests on
+SQLite (nine skips) and PostgreSQL (no skips); real hosted role/file/review flows and remote recovery
 from a private Backblaze backup passed. The owner received an independent
 missed-job Gmail alert. Current branch CI/runner scheduling and remaining
 production gates are distinguished in that record. Earlier checkpoints below

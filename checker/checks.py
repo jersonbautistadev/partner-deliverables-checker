@@ -70,4 +70,8 @@ def release_checks(app_configs, **kwargs):
     need(
         not settings.SECRET_KEY.startswith("replace-"), "Replace placeholder production secrets.", 7
     )
+    try:
+        validate_email(settings.PUBLIC_SUPPORT_EMAIL)
+    except ValidationError:
+        need(False, "Set a valid PUBLIC_SUPPORT_EMAIL for support and retention requests.", 10)
     return issues

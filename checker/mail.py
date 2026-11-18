@@ -8,8 +8,14 @@ from django.db import connection, transaction
 from django.utils import timezone
 
 from checker.models import MailJob, ServiceHeartbeat
+from checker.security import consume_limit, consume_limit_wait
 
 logger = logging.getLogger(__name__)
+
+
+def mail_capacity_wait():
+    limit = settings.MAIL_DAILY_ATTEMPT_LIMIT
+    return consume_limit_wait("mail-send-day", limit, 86400, consume=False) if limit else 0
 
 
 class QueueBackend(BaseEmailBackend):
@@ -44,6 +50,11 @@ def deliver_batch(limit=10):
             job = qs.first()
             if not job:
                 break
+            if settings.MAIL_DAILY_ATTEMPT_LIMIT and not consume_limit(
+                "mail-send-day", settings.MAIL_DAILY_ATTEMPT_LIMIT, 86400
+            ):
+                logger.warning("mail_daily_capacity_reached")
+                break  # Keep the queued message and its retry count untouched.
             job.attempts += 1
             try:
                 backend = get_connection(settings.DELIVERY_EMAIL_BACKEND, fail_silently=False)

@@ -35,9 +35,9 @@ BEGIN
             ARRAY[extensions.http_header('x-vercel-protection-bypass', preview_secret)],
             NULL, NULL
         )::extensions.http_request);
-        healthy := response.status = 200
+        healthy := COALESCE(response.status = 200
             AND response.content_type LIKE 'application/json%'
-            AND response.content::jsonb = '{"status":"ready"}'::jsonb;
+            AND response.content::jsonb = '{"status":"ready"}'::jsonb, false);
     EXCEPTION WHEN OTHERS THEN
         healthy := false;
     END;
@@ -47,7 +47,7 @@ BEGIN
         ARRAY[]::extensions.http_header[], 'application/octet-stream', ''
     )::extensions.http_request);
     PERFORM extensions.http_reset_curlopt();
-    IF response.status <> 200 OR btrim(response.content) <> 'OK' THEN
+    IF response.status IS DISTINCT FROM 200 OR btrim(COALESCE(response.content, '')) <> 'OK' THEN
         RAISE EXCEPTION 'Independent monitor acknowledgement unavailable';
     END IF;
     IF NOT healthy THEN

@@ -198,3 +198,8 @@ nav a { min-height: 44px; }
 
 .brand span { max-width: 22rem; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .account-name { display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-weight: inherit; }
+.policy-page { max-width: 68ch; margin-inline: auto; }
+.policy-page section { margin-top: var(--space-5); padding-top: var(--space-4); border-top: 1px solid var(--line); }
+.policy-page p { line-height: 1.65; }
+.support-address { display: inline-flex; align-items: center; min-height: 44px; overflow-wrap: anywhere; }
+.site-footer a { display: inline-flex; align-items: center; min-height: 44px; }

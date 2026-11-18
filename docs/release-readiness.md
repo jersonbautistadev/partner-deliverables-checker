@@ -1,10 +1,13 @@
 # Public release readiness
 
 Current decision: **protected staging acceptance passed; public launch remains no-go**.
-The [17 November record](staging-verification-2026-11-17.md) supersedes historical
-checkpoints below. Actual hosted invitation, reset/sign-in, workspace/role,
+The [18 November rollout record](production-rollout-2026-11-18.md) is the latest
+checkpoint, following [17 November staging acceptance](staging-verification-2026-11-17.md).
+Actual hosted invitation, reset/sign-in, workspace/role,
 upload/replacement/quota, review invalidation, source/history and private-download
-flows passed. Current local SQLite/PostgreSQL suites each passed 142 tests.
+flows passed. Current local SQLite/PostgreSQL suites each passed 150 tests
+(nine PostgreSQL-only skips on SQLite). The newer pilot limits/support page
+and production scheduler preparation still need hosted CI and deployment checks.
 A real encrypted Backblaze copy restored into a fresh managed database/private
 prefix, including original downloads for both roles. Independent readiness
 monitoring is active and the owner received a missed-job Gmail alert. Current

@@ -4,7 +4,14 @@ A Django application for teams coordinating event media partnerships. It checks 
 
 ## Release status
 
-Public-account and workspace features are implemented. Local tests cover SQLite and PostgreSQL, account flows, isolation, quotas, concurrent changes, and encrypted recovery. A [review deployment](https://partner-deliverables-checker-puux.vercel.app) is running on Vercel with verified Supabase database/private storage. Email delivery and full hosted account/operational acceptance remain release gates. See [release evidence and remaining gates](docs/release-readiness.md) and [verification](docs/verification.md). Passing local tests is not evidence of a working hosted deployment.
+Public-account and workspace features are implemented. Protected staging passed
+real email/account, workspace isolation, file/review, private-download and off-site
+recovery exercises. Its nightly backup and independent failure/recovery emails
+were verified. Production rollout for a small personal/educational pilot is in
+progress; production-specific gates remain. See [current rollout evidence](docs/production-rollout-2026-11-18.md),
+[release readiness](docs/release-readiness.md) and [verification](docs/verification.md).
+The [Vercel deployment](https://partner-deliverables-checker-puux.vercel.app) must
+not be described as public-launch ready solely because a build or test passed.
 
 The UI retains the editorial layout, responsive worklist, source-linked findings, and accessible native forms. New accounts create a private workspace or accept an invitation. Roles are per workspace: a person can coordinate one team and contribute to another.
 
@@ -59,7 +66,7 @@ Email is stored in a durable database queue. Run a worker on Compose, or configu
 - Four file slots exist per package: article, caption, promotional image, and logo.
 - Findings are passed, failed, missing, or needs review. Ambiguous or unapproved instructions never pass automatically.
 - Manual decisions apply to an exact input fingerprint. Replacements and changed instructions invalidate old approvals.
-- Upload/removal generates the affected report. Requirement revisions are applied lazily when authorized report/dashboard reads verify the current fingerprint, avoiding a large synchronous fan-out during editing.
+- Upload/removal generates the affected report. Authorized report reads verify current inputs. The dashboard shows dated snapshots and flags changed packages/requirements for a new report; it does not recheck every original file while listing packages.
 - Requirement history is paginated; previous snapshots remain in the database.
 - Deadlines display in Asia/Manila, separately from readiness. An elapsed deadline does not prove delivery was missed.
 
@@ -70,6 +77,17 @@ Originals are private attachments. S3 deployments issue authorized signed attach
 ## Initial usage limits
 
 Defaults are configurable through Django environment settings: 3 created workspaces/account; 20 memberships/account; 20 members and 20 pending invitations/workspace; 100 MiB current-file storage/workspace; 50 partners, 200 packages and 500 requirements/workspace; 60 upload operations/hour/workspace. These are guardrails, not measured hosting capacity.
+
+The pilot can additionally cap workspaces across all accounts with
+`MAX_SERVICE_WORKSPACES` and SMTP attempts per UTC day with
+`MAIL_DAILY_ATTEMPT_LIMIT`. Zero disables either optional service-wide cap.
+Workspace creation is serialized across accounts; SMTP attempts share a database
+budget across dispatchers, including failed transport attempts. A full mail
+budget retains queued messages without consuming their retries, displays an
+account-email delay notice and makes readiness fail when mail is waiting.
+`PUBLIC_SUPPORT_EMAIL` is intentionally public on `/pilot/` and is required by
+production deployment checks. That page explains the pilot's access, retention,
+provider and support arrangements before sign-in.
 
 Account POST requests have an IP limit of 10/minute and an identity limit of 5/15 minutes. Checking operations have IP/user limits of 60/minute. Counters are shared in the database. Shared networks and fixed-window boundaries affect those limits. Configure and load-test them for the actual team and provider quotas.
 

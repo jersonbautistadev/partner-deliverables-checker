@@ -122,3 +122,64 @@ jobs:
           echo "TMPDIR=$RUNNER_TEMP" >> "$GITHUB_ENV"
       - name: Capture and verify private encrypted off-site copy
         run: python manage.py backup_offsite --directory "$RUNNER_TEMP/pdc-staging-backups"
+
+  production-backup:
+    if: github.event_name == 'workflow_dispatch' && vars.ENABLE_PRODUCTION_BACKUP == 'true' && github.ref_name == vars.PRODUCTION_BACKUP_REF
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    concurrency:
+      group: production-offsite-backup
+      cancel-in-progress: false
+    env:
+      DJANGO_DEBUG: "0"
+      DJANGO_SECRET_KEY: ${{ secrets.PRODUCTION_BACKUP_DJANGO_SECRET_KEY }}
+      DATABASE_URL: ${{ secrets.PRODUCTION_BACKUP_DATABASE_URL }}
+      DATABASE_REQUIRE_SSL: "1"
+      DATABASE_SSL_ROOT_CERT: deploy/supabase-root-ca.crt
+      PRIVATE_S3_BUCKET: private-deliverables
+      PRIVATE_S3_ACCESS_KEY: ${{ secrets.PRODUCTION_SOURCE_S3_ACCESS_KEY }}
+      PRIVATE_S3_SECRET_KEY: ${{ secrets.PRODUCTION_SOURCE_S3_SECRET_KEY }}
+      PRIVATE_S3_ENDPOINT_URL: https://okegffrizgpxkxbpnckv.storage.supabase.co/storage/v1/s3
+      PRIVATE_S3_REGION: us-east-1
+      PRIVATE_S3_ADDRESSING_STYLE: path
+      PRIVATE_S3_PREFIX: production/originals
+      BACKUP_ENCRYPTION_KEY: ${{ secrets.PRODUCTION_BACKUP_ENCRYPTION_KEY }}
+      BACKUP_S3_ENDPOINT_URL: ${{ vars.PRODUCTION_BACKUP_S3_ENDPOINT_URL }}
+      BACKUP_S3_REGION: ${{ vars.PRODUCTION_BACKUP_S3_REGION }}
+      BACKUP_S3_BUCKET: ${{ vars.PRODUCTION_BACKUP_S3_BUCKET }}
+      BACKUP_S3_PREFIX: production/
+      BACKUP_S3_ACCESS_KEY: ${{ secrets.PRODUCTION_BACKUP_S3_ACCESS_KEY }}
+      BACKUP_S3_SECRET_KEY: ${{ secrets.PRODUCTION_BACKUP_S3_SECRET_KEY }}
+      BACKUP_STORAGE_LIMIT_BYTES: "3221225472"
+      BACKUP_HEALTHCHECK_URL: ${{ secrets.PRODUCTION_BACKUP_HEALTHCHECK_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements.txt
+      - name: Validate production backup source before connecting
+        run: |
+          python - <<'PY'
+          import os
+          from urllib.parse import urlsplit, parse_qs
+          source = urlsplit(os.environ['DATABASE_URL'])
+          if (source.hostname != 'aws-0-us-east-1.pooler.supabase.com'
+              or source.port != 5432 or source.username != 'pdc_migrator.okegffrizgpxkxbpnckv'
+              or source.path != '/postgres' or parse_qs(source.query).get('sslmode') != ['verify-full']):
+              raise SystemExit('Refusing an unexpected production backup source or unverified TLS.')
+          PY
+      - run: python -m pip install --require-hashes -r requirements.txt
+      - name: Prepare matching PostgreSQL client
+        run: |
+          mkdir -p .runtime/bin
+          cat > .runtime/bin/pg_dump <<'SH'
+          #!/bin/sh
+          exec docker run --rm --network host --user "$(id -u):$(id -g)" -v "$PWD:$PWD:ro" -v "$RUNNER_TEMP:$RUNNER_TEMP" -e PGPASSWORD -e PGSSLMODE -e PGSSLROOTCERT postgres:17-alpine pg_dump "$@"
+          SH
+          chmod +x .runtime/bin/pg_dump
+          echo "PG_DUMP=$PWD/.runtime/bin/pg_dump" >> "$GITHUB_ENV"
+          echo "TMPDIR=$RUNNER_TEMP" >> "$GITHUB_ENV"
+      - name: Capture and verify private encrypted production backup
+        run: python manage.py backup_offsite --directory "$RUNNER_TEMP/pdc-production-backups"

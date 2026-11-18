@@ -28,9 +28,10 @@
     {% endif %}
   </header>
   <main id="main" tabindex="-1">
+    {% if mail_delayed %}<div role="status" class="notice warning">Account email delivery is temporarily delayed. New messages may wait until capacity is available. <a href="{% url 'pilot_information' %}#support">Contact support</a> if you need help.</div>{% endif %}
     {% for message in messages %}<div role="{% if 'error' in message.tags %}alert{% else %}status{% endif %}" class="notice {{ message.tags }}">{{ message }}</div>{% endfor %}
     {% block content %}{% endblock %}
   </main>
-  <footer class="site-footer"><span>Partner Deliverables Checker</span><span>All times Asia/Manila (UTC+08)</span></footer>
+  <footer class="site-footer"><span>Partner Deliverables Checker</span><a href="{% url 'pilot_information' %}">Pilot, privacy &amp; support</a><span>All times Asia/Manila (UTC+08)</span></footer>
 </body>
 </html>

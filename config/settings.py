@@ -175,6 +175,11 @@ UPLOAD_MAX_BYTES = int(
     )
 )
 MAIL_MAX_ATTEMPTS = 6
+MAIL_DAILY_ATTEMPT_LIMIT = int(os.environ.get("MAIL_DAILY_ATTEMPT_LIMIT", "0"))
+MAX_SERVICE_WORKSPACES = int(os.environ.get("MAX_SERVICE_WORKSPACES", "0"))
+PUBLIC_SUPPORT_EMAIL = os.environ.get("PUBLIC_SUPPORT_EMAIL", "").strip()
+if min(MAIL_DAILY_ATTEMPT_LIMIT, MAX_SERVICE_WORKSPACES) < 0:
+    raise ImproperlyConfigured("Service capacity limits must be zero or positive.")
 MAIL_HEALTH_MAX_AGE_SECONDS = max(60, int(os.environ.get("MAIL_HEALTH_MAX_AGE_SECONDS", "900")))
 OPS_SECRET = os.environ.get("OPS_SECRET", "")
 LOGGING = {

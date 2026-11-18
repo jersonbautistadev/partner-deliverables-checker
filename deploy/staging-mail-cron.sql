@@ -65,7 +65,7 @@ BEGIN
         'application/json', '{}'
     )::extensions.http_request);
     PERFORM extensions.http_reset_curlopt();
-    IF response.status <> 200 OR response.content_type NOT LIKE 'application/json%'
+    IF response.status IS DISTINCT FROM 200 OR COALESCE(response.content_type, '') NOT LIKE 'application/json%'
        OR jsonb_typeof(response.content::jsonb -> 'delivered') IS DISTINCT FROM 'number' THEN
         RAISE EXCEPTION 'Staging dispatcher response unavailable';
     END IF;

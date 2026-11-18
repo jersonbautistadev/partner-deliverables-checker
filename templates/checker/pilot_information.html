@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+{% block title %}Pilot information | Partner deliverables{% endblock %}
+{% block content %}
+<article class="policy-page">
+  <h1>Pilot information</h1>
+  <p class="lede">A small personal and educational pilot for reviewing event partnership packages.</p>
+  <section aria-labelledby="pilot-use"><h2 id="pilot-use">Use and availability</h2>
+    <p>A passed check records the configured result at that time. Delivery to a partner happens outside this app. Keep your own copies of important files.</p>
+    <p>The pilot uses services with limited free capacity. Email, uploads or the app may be delayed or unavailable. It is not offered with an availability guarantee. If an emailed link has expired, request a new one when delivery resumes.</p>
+    <p>{% if service_workspace_limit %}The pilot currently allows up to {{ service_workspace_limit }} workspaces across all accounts. {% endif %}New workspaces have {{ workspace_storage_limit|filesizeformat }} for current files. Account email has a shared daily sending limit; contact support if delivery is delayed.</p>
+  </section>
+  <section aria-labelledby="privacy"><h2 id="privacy">Information and access</h2>
+    <p>The app stores account details, workspace memberships, publishing requirements, uploaded originals, findings and review history. Workspace coordinators can access their team's packages; contributors can manage their own packages in that workspace. The service operator can access records when administering the service or handling a support request.</p>
+    <p>Original files are private attachments. Download links are temporary bearer links: anyone with a valid link can use it until it expires. Upload validation checks supported formats and limits; it does not scan for malware.</p>
+    <p>Vercel hosts the application, Supabase stores the database and originals, Gmail delivers account emails, Backblaze stores encrypted backups, and Healthchecks receives status pings. Hosting providers also process operational request metadata. Status pings do not include your documents.</p>
+  </section>
+  <section aria-labelledby="retention"><h2 id="retention">Retention and deletion</h2>
+    <p>Replacing or removing a file removes its previous original after a successful save. Requirements, report fingerprints, review decisions and audit history remain. Removing a membership or deactivating an account does not automatically erase account or workspace history.</p>
+    <p>Routine encrypted off-site backups expire after approximately eight days, subject to provider processing delays. Manual upgrade or recovery copies can remain until the operator removes them. Ask support about retained copies when requesting deletion. Sent account email bodies and recipients are cleared from the application's queue; maintenance removes expired security records. Email providers and recipients may retain their own copies.</p>
+    <p>Contact support to request access corrections or deletion. Requests are handled manually, including records shared with a workspace. Do not send passwords, verification links or private documents in an initial support email.</p>
+  </section>
+  <section aria-labelledby="support"><h2 id="support">Support</h2>
+    {% if public_support_email %}<p><a class="support-address" href="mailto:{{ public_support_email }}">{{ public_support_email }}</a></p>{% else %}<p>The operator has not configured a public contact address. Contact the person who provided access before uploading private documents.</p>{% endif %}
+  </section>
+</article>
+{% endblock %}

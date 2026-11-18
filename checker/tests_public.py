@@ -711,3 +711,67 @@ class PublicWorkflowTests(TestCase):
             self.select(self.b, self.w2)
             self.assertEqual(self.client.get(reverse("asset_download", args=[self.k1.pk, asset.pk])).status_code, 404)
             sign.assert_not_called()
+
+    @override_settings(MAIL_DAILY_ATTEMPT_LIMIT=1)
+    def test_daily_mail_capacity_preserves_pending_jobs_and_resets(self):
+        for index in range(2):
+            MailJob.objects.create(recipient=f"pilot{index}@example.test", subject="Fixture", body="Fixture", available_at=timezone.now())
+        with patch("checker.mail.send_mail", return_value=1) as send:
+            with patch("checker.security.time.time", return_value=86401):
+                self.assertEqual(deliver_batch(5), 1)
+                waiting = MailJob.objects.get(sent_at__isnull=True)
+                self.assertEqual(waiting.attempts, 0)
+                self.assertEqual(waiting.body, "Fixture")
+                self.assertEqual(deliver_batch(5), 0)
+                self.assertContains(Client().get(reverse("password_reset")), "Account email delivery is temporarily delayed")
+            with patch("checker.security.time.time", return_value=172801):
+                self.assertEqual(deliver_batch(5), 1)
+            self.assertEqual(send.call_count, 2)
+        self.assertFalse(MailJob.objects.filter(sent_at__isnull=True).exists())
+
+    @override_settings(MAIL_DAILY_ATTEMPT_LIMIT=1)
+    def test_failed_smtp_attempt_consumes_daily_capacity(self):
+        for index in range(2):
+            MailJob.objects.create(recipient=f"pilot{index}@example.test", subject="Fixture", body="Fixture", available_at=timezone.now())
+        with patch("checker.mail.send_mail", side_effect=RuntimeError("private transport details")) as send:
+            self.assertEqual(deliver_batch(5), 0)
+            self.assertEqual(send.call_count, 1)
+        self.assertEqual(list(MailJob.objects.order_by("pk").values_list("attempts", flat=True)), [1, 0])
+        self.assertEqual(MailJob.objects.filter(sent_at__isnull=True).count(), 2)
+
+    @override_settings(DEBUG=True, MAIL_DAILY_ATTEMPT_LIMIT=1)
+    def test_readiness_reports_blocked_mail_capacity_without_losing_messages(self):
+        from checker.security import consume_limit
+
+        MailJob.objects.create(recipient="fixture@example.test", subject="Fixture", body="Fixture", available_at=timezone.now())
+        self.assertTrue(consume_limit("mail-send-day", 1, 86400))
+        response = self.client.get(reverse("readiness"))
+        self.assertEqual(response.status_code, 503)
+        self.assertEqual(response.json(), {"status": "unavailable"})
+        self.assertEqual(MailJob.objects.filter(sent_at__isnull=True).count(), 1)
+
+    @override_settings(PUBLIC_SUPPORT_EMAIL="support@example.test", MAX_SERVICE_WORKSPACES=5)
+    def test_pilot_information_is_public_and_available_before_verification(self):
+        for client in (Client(), self.client):
+            response = client.get(reverse("pilot_information"))
+            self.assertEqual(response.status_code, 200)
+            self.assertContains(response, 'href="mailto:support@example.test"')
+            self.assertContains(response, "up to 5 workspaces")
+            self.assertNotContains(response, "Secret Beta")
+        Account.objects.filter(user=self.a).update(verified_at=None)
+        self.assertEqual(self.client.get(reverse("pilot_information")).status_code, 200)
+
+    @override_settings(MAX_SERVICE_WORKSPACES=2)
+    def test_pilot_workspace_limit_applies_across_accounts(self):
+        response = self.client.post(reverse("workspace_create"), {"name": "One more workspace"})
+        self.assertContains(response, "Pilot workspace capacity has been reached")
+        self.assertEqual(Workspace.objects.count(), 2)
+        self.assertFalse(Workspace.objects.filter(name="One more workspace").exists())
+
+    @override_settings(DEBUG=False, PUBLIC_SUPPORT_EMAIL="")
+    def test_production_deployment_check_requires_public_support_contact(self):
+        from checker.checks import release_checks
+
+        self.assertIn("checker.E010", [item.id for item in release_checks(None)])
+        with override_settings(PUBLIC_SUPPORT_EMAIL="support@example.test"):
+            self.assertNotIn("checker.E010", [item.id for item in release_checks(None)])

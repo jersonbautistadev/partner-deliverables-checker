@@ -27,7 +27,7 @@ from checker.account_forms import (
 )
 from checker.models import Account, ActionToken, Membership, Workspace
 from checker.permissions import is_verified, require_coordinator
-from checker.security import LimitExceeded, count_limit, storage_used
+from checker.security import LimitExceeded, count_limit, guard_workspace_capacity, storage_used
 from checker.services import audit
 
 
@@ -197,6 +197,7 @@ def workspace_create(request):
             Account.objects.select_for_update().get(user=request.user)
             require_verified(request)
             try:
+                guard_workspace_capacity()
                 count_limit(
                     Workspace.objects.filter(created_by=request.user), "MAX_CREATED_WORKSPACES"
                 )
