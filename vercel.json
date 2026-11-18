@@ -1,4 +1,5 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "framework": "django"
+  "framework": "django",
+  "buildCommand": "python manage.py check --deploy --fail-level WARNING"
 }
