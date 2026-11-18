@@ -7,7 +7,8 @@ Actual hosted invitation, reset/sign-in, workspace/role,
 upload/replacement/quota, review invalidation, source/history and private-download
 flows passed. Current local SQLite/PostgreSQL suites each passed 150 tests
 (nine PostgreSQL-only skips on SQLite). The newer pilot limits/support page
-and production scheduler preparation still need hosted CI and deployment checks.
+and production scheduler preparation passed hosted CI; production execution
+and acceptance remain unverified.
 A real encrypted Backblaze copy restored into a fresh managed database/private
 prefix, including original downloads for both roles. Independent readiness
 monitoring is active and the owner received a missed-job Gmail alert. Current

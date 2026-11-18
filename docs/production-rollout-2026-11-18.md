@@ -47,7 +47,11 @@ Production preparation exposed additional operational gaps:
   in 92.242 s; PostgreSQL 17.12 OK with no skips in 119.773 s. This includes new
   cross-account workspace and concurrent SMTP-budget races.
 - Ruff, Django checks, migration consistency, YAML parsing, production fixture
-  checks and dependency audit passed. New changes still need their hosted CI.
+  checks and dependency audit passed. Hosted Linux CI for source `3042cd5`
+  [passed](https://github.com/jersonbautistadev/partner-deliverables-checker/actions/runs/44249660879),
+  including both full suites, dependency audit, static collection, operator SQL,
+  production fixture checks, Compose configuration and three image builds.
+  The PR run [also passed](https://github.com/jersonbautistadev/partner-deliverables-checker/actions/runs/44249666728).
 - Native PostgreSQL executed the operator SQL with disposable HTTP/Vault/cron
   fixtures: five jobs installed paused; role denials, capacity thresholds,
   malformed/NULL/redirected responses and scoped log retention passed.
@@ -60,12 +64,30 @@ Production preparation exposed additional operational gaps:
   fixture gap in the new PostgreSQL workspace-capacity form response: no static
   manifest exists before collection on a clean runner. The test now explicitly
   uses ordinary static storage, consistent with other form tests. Capacity
-  assertions and production static settings are unchanged; hosted recheck pending.
+  assertions and production static settings are unchanged; the hosted recheck
+  passed as linked above.
 - Orca's local pilot page was inspected at actual 390, 768 and 1200 CSS pixel
   widths; measured page widths did not overflow. A full mobile capture and
   desktop/tablet viewport captures were viewed. Some initial full-page captures
   timed out; successful ordinary captures and actual viewport measurements were
   used instead. This is local UI evidence, not a production browser claim.
+- The actual protected branch deployment's final pilot/support page was then
+  viewed in Orca at 390, 768 and 1200 CSS pixels with no measured horizontal
+  overflow. The approved contact appeared correctly. Sign-in, signup, reset,
+  pilot and readiness GETs returned 200; manifest CSS and security headers passed.
+  A bounded readiness probe returned 20/20 successes with five concurrent
+  clients (p95 2.532 s, maximum 2.594 s). This is not sustained load/capacity proof.
+
+The approved public support config was saved for Production and Preview.
+Production limits of five workspaces and 100 SMTP attempts/day, plus a separate
+25-attempt setting restricted to the staging branch, were saved in Vercel.
+New settings require a deployment; production enforcement has not been verified.
+The existing write-only staging SMTP credential remains restricted to its branch;
+no credential was revealed or broadened to all Preview branches.
+Six independent production runner secrets and its reviewed branch reference
+were saved to GitHub. `ENABLE_PRODUCTION_BACKUP` remains false; destination
+credentials are not configured. Four production Healthchecks checks exist but
+remain unarmed. Neither step proves production execution or alert delivery.
 
 ## Production baseline and upgrade recovery
 
@@ -73,6 +95,9 @@ Read-only production inventory found schema through migration 0003, two
 unverified accounts, no workspaces/packages/originals and two pending emails.
 The database was approximately 12.6 MB at that inspection. Runtime/migration
 roles had no superuser, database-creation or role-creation privileges.
+The operator-only capacity queries ran read-only against production: zero bytes
+in storage object metadata and 16 observed database connections of 60 configured.
+These are point-in-time observations, not a concurrency capacity estimate.
 
 Before any migration, a **14,229-byte encrypted schema-0003 bundle** captured all
 23 expected Django tables with a strict table allowlist and original-file lock.
@@ -132,3 +157,20 @@ Provider references checked during preparation:
 [Gmail sending limits](https://support.google.com/mail/answer/22839?hl=en).
 These are finite service allowances, not measured application capacity or a
 service-level guarantee.
+
+## Changed-file manifest for this checkpoint
+
+- Pilot controls and checks: `config/settings.py`, `checker/accounts.py`,
+  `checker/security.py`, `checker/mail.py`, `checker/operations.py`,
+  `checker/checks.py`, `checker/tests_public.py`, `checker/tests_concurrency.py`.
+- Interface and public policy route: `checker/public.py`, `checker/context.py`,
+  `config/urls.py`, `templates/base.html`,
+  `templates/checker/pilot_information.html`, `static/app.css`.
+- Deployment and verification: `.env.example`, `compose.yaml`,
+  `.github/workflows/ci.yml`, `.github/workflows/mail-delivery.yml`,
+  `deploy/production-operations.sql`, `deploy/staging-mail-cron.sql`,
+  `deploy/staging-readiness-cron.sql`, `deploy/staging-backup-cron.sql`,
+  `scripts/rehearse_operations.py`.
+- Documentation: `README.md`, `docs/security.md`, `docs/release-readiness.md`,
+  `docs/verification.md`, this record. Runtime credentials, cookies and operator
+  scratch/recovery files remain ignored and outside the repository.
