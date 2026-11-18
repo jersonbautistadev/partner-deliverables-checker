@@ -92,7 +92,13 @@ class PostgreSQLConcurrencyTests(TransactionTestCase):
         self.assertEqual(result, [302, 302])
         self.assertEqual(Membership.objects.filter(role="coordinator").count(), 1)
 
-    @override_settings(MAX_SERVICE_WORKSPACES=2)
+    @override_settings(
+        MAX_SERVICE_WORKSPACES=2,
+        STORAGES={
+            "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+            "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+        },
+    )
     def test_different_accounts_cannot_exceed_pilot_workspace_capacity(self):
         barrier = Barrier(2)
 

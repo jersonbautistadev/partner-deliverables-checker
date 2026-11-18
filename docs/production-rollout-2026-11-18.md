@@ -53,7 +53,14 @@ Production preparation exposed additional operational gaps:
   malformed/NULL/redirected responses and scoped log retention passed.
 - Updated staging SQL was installed against the actual provider. Mail and
   readiness acknowledged actual HTTPS responses; their two-minute jobs were
-  reactivated. Backup dispatch/activation evidence is recorded separately below.
+  reactivated. Backup dispatch also received GitHub's acknowledgement and was
+  reactivated at 18:17 UTC. Its real hosted backup run passed:
+  [44249060819](https://github.com/jersonbautistadev/partner-deliverables-checker/actions/runs/44249060819).
+- First hosted CI for the new pilot changes passed SQLite but found a test
+  fixture gap in the new PostgreSQL workspace-capacity form response: no static
+  manifest exists before collection on a clean runner. The test now explicitly
+  uses ordinary static storage, consistent with other form tests. Capacity
+  assertions and production static settings are unchanged; hosted recheck pending.
 - Orca's local pilot page was inspected at actual 390, 768 and 1200 CSS pixel
   widths; measured page widths did not overflow. A full mobile capture and
   desktop/tablet viewport captures were viewed. Some initial full-page captures
