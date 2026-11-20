@@ -63,6 +63,20 @@ pre-change database/files under a controlled outage; obtain explicit approval fo
 destructive production recovery. Reversing the migration drops evidence/outcome
 fields and loses that history, so it is not an ordinary rollback procedure.
 
+Include the backup runner in that version change: update both
+`PRODUCTION_BACKUP_REF` and Vault's `pdc_production_backup_ref` to the reviewed
+code containing `Evidence`, then verify a real production backup before allowing
+new evidence writes. The older runner discovers tables from its installed models
+and would omit the new evidence table. Staging has a separate repository variable
+and installed dispatcher ref; changing one environment must not change the other.
+
+The tested feature Preview is bound to staging services. Build a separate
+**Production-target deployment with Production environment variables**, initially
+without assigning the public domain. Verify its bindings and smoke checks before
+moving the public alias. Do not promote the staging-bound Preview artifact directly
+to the public domain. Require the owner's explicit public-rollout approval before
+the production migration, runner-ref change and alias switch.
+
 Generate and securely store a separate random 32-byte base64-url-safe `BACKUP_ENCRYPTION_KEY`. Keep it outside the repository and outside the backup destination; retain the correct old key when rotating. Without the key, recovery is impossible. Bundles contain account data, private files, sessions and possibly unexpired email tokens. Restrict destination/key access and maintain encrypted off-site copies.
 
 Choose one consistency mode. SQLite and older releases require **all** web,

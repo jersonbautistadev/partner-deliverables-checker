@@ -69,6 +69,31 @@ report/history inspection at 390, 768 and 1100 CSS-pixel widths. Phone report an
 tablet history width probes showed no horizontal overflow. This remains separate
 from a complete assistive-technology assessment or proof of external fulfillment.
 
+The follow-up staging release at `357c896` passed its active project's Preview
+build and both GitHub CI runs. A staging backup-version gap was also corrected:
+the repository's staging backup ref and the installed dispatcher now use the
+evidence-aware branch, independently of the unchanged production ref. The real
+dispatcher launched Actions run `44771018164`; the staging backup job passed,
+while production backup, mail delivery and maintenance jobs were skipped. The
+nightly staging schedule was resumed after verification; staging mail/readiness
+schedules retained their original active state and cadence.
+
+The exact resulting private B2 object version was independently retrieved,
+checked against its stored ciphertext digest, authenticated and checked against
+all six original digests. Unsigned retrieval was denied (401). It was restored
+into a new loopback-only PostgreSQL database and fresh local private-file root:
+both evidence versions and explicit optional decisions survived, all six protected
+original downloads matched, and an unrelated workspace was denied all six.
+Provider cron/Vault schemas were absent. This was an actual off-site restore into
+isolated local PostgreSQL, not a second managed-provider deployment or a claim of
+production rollout. Real partnership drafts remain outside these synthetic teams.
+
+Three additional Vercel projects connected to this repository still reported
+failed builds for the same push. They were left unchanged; the passing deployment
+above is specifically `partner-deliverables-checker-puux`. Their separate project
+configuration requires an owner decision before any connection is removed or
+repurposed. Do not describe all repository deployment checks as green.
+
 Latest production evidence: [18 November 2026 production acceptance](production-acceptance-2026-11-18.md),
 following [pilot rollout preparation](production-rollout-2026-11-18.md),
 following [17 November staging acceptance and operations](staging-verification-2026-11-17.md),
