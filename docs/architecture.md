@@ -12,6 +12,27 @@ Django 5.2 / Python 3.12 serves templates and plain CSS. PostgreSQL is the produ
 
 ## Data boundaries
 
+Evidence obligations reuse `Requirement` with kind `evidence` and no file slot.
+Responsibility and applicability describe the agreement; they grant no additional
+permissions. An across-stage requirement applies to pre/event/post packages, while
+an unconfirmed-stage draft cannot be approved through the form. Coverage does not
+resolve an across-stage instruction while any of those stages lacks a visible package.
+Contributors see shared instructions and only their own package report statuses.
+
+`Evidence` is an append-only package+requirement submission history. The latest row
+is included in the package fingerprint, binding decisions to its ID, URL, note and
+submitting actor. File changes remain part of the same fingerprint. Submissions
+lock workspace then package, check an optimistic current-evidence ID, enforce the
+workspace history quota, append evidence/audit and refresh the report atomically.
+Failures roll back all database writes. The server never follows supplied URLs.
+
+Legacy default requirement metadata is omitted from fingerprint serialization,
+and no evidence key is added when there is none. Thus unchanged existing file-only
+fingerprints and boolean manual reviews remain applicable. New decisions use an
+explicit outcome, including `not_applicable` only for optional/conditional evidence.
+The pure file-check engine's existing behavior/version is unchanged; the evidence
+branch and optional fingerprint payload are additive.
+
 `Workspace` -> `Partner` -> `Requirement` / `Package`. Assets and reports belong to packages; revisions belong to requirements. Manual reviews are attached to package+requirement+fingerprint. These records inherit their workspace through their parent relation. `AuditEvent` has an explicit workspace; global account events have no workspace and are excluded from workspace audit pages.
 
 `Account` associates a unique normalized email and verification timestamp with Django's existing User model. `Membership` stores one role per user/workspace. Global groups are historical data only. There is no superuser workspace bypass. `ActionToken` stores only a random token's SHA-256 digest, purpose, bound email/user/workspace, expiry and consumption time. `MailJob` holds delivery data privately until acknowledgement, then clears body and recipient. `RateBucket` uses secret-keyed identity digests and short-lived fixed windows.

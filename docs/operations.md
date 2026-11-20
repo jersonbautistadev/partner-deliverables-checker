@@ -44,6 +44,25 @@ Current PostgreSQL bundles declare `database_scope=django-public-tables`. Restor
 
 Migration `0004_service_heartbeat` is additive and reversible. Roll back application/worker code together before considering reversal; dropping this new table removes only operational heartbeat state. Prefer leaving an unused table during an application rollback. The current worker writes `ServiceHeartbeat(name="mail")` after each completed batch, including an empty batch. A restored database's heartbeat is historical: keep restored mail workers disabled until the queue/tokens are reviewed, then require fresh worker activity before reopening traffic. Do not dispatch old real-user emails during a restore rehearsal.
 
+Migration `0005_obligation_evidence` adds evidence history, requirement metadata and
+explicit review outcomes; it does not rewrite existing accounts, original paths,
+requirement revisions, reports or review fingerprints. Existing requirements default
+to unspecified responsibility and required applicability. Apply it to a protected
+staging database before deploying the new code there. Existing runtime SQL grants
+may name tables explicitly: grant the runtime role SELECT/INSERT on the new
+`checker_evidence` table and USAGE/SELECT on its sequence as appropriate; rehearse
+using the runtime role rather than assuming the migration owner's rights apply.
+
+Before production rollout, take and verify an encrypted database/private-file backup,
+apply the migration with the migration role, verify runtime grants, then deploy the
+matching web/worker code and run acceptance checks. Do not run old code after creating
+new evidence requirements or non-applicability decisions: it does not understand
+their semantics and may misstate coverage. Code-only rollback is safe before those
+new records are written. After adoption, prefer a forward fix or restore the paired
+pre-change database/files under a controlled outage; obtain explicit approval for
+destructive production recovery. Reversing the migration drops evidence/outcome
+fields and loses that history, so it is not an ordinary rollback procedure.
+
 Generate and securely store a separate random 32-byte base64-url-safe `BACKUP_ENCRYPTION_KEY`. Keep it outside the repository and outside the backup destination; retain the correct old key when rotating. Without the key, recovery is impossible. Bundles contain account data, private files, sessions and possibly unexpired email tokens. Restrict destination/key access and maintain encrypted off-site copies.
 
 Choose one consistency mode. SQLite and older releases require **all** web,

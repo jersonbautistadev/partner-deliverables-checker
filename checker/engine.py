@@ -42,7 +42,10 @@ def normalized(text):
 
 def safe_xml(data):
     # Reject DTDs/entities before parsing, including UTF-16/32 encodings.
-    if b"<!DOCTYPE" in data.replace(b"\x00", b"").upper() or b"<!ENTITY" in data.replace(b"\x00", b"").upper():
+    if (
+        b"<!DOCTYPE" in data.replace(b"\x00", b"").upper()
+        or b"<!ENTITY" in data.replace(b"\x00", b"").upper()
+    ):
         raise InvalidUpload("DOCX XML contains a prohibited DTD/entity declaration.")
     try:
         return ElementTree.fromstring(data)
@@ -61,22 +64,34 @@ def docx_text(data):
                 raise InvalidUpload("Expanded DOCX exceeds 20 MiB.")
             for p in parts:
                 path = PurePosixPath(p.filename)
-                if path.is_absolute() or ".." in path.parts or "\\" in p.filename or p.flag_bits & 1:
+                if (
+                    path.is_absolute()
+                    or ".." in path.parts
+                    or "\\" in p.filename
+                    or p.flag_bits & 1
+                ):
                     raise InvalidUpload("DOCX contains unsafe paths or encrypted entries.")
                 if any(x in p.filename.lower() for x in ["vbaproject", "embeddings/", "activex/"]):
                     raise InvalidUpload("Macros, embedded objects and ActiveX are unsupported.")
                 if p.filename.endswith(".rels"):
                     root = safe_xml(archive.read(p))
                     if any(e.get("TargetMode", "").lower() == "external" for e in root.iter()):
-                        raise InvalidUpload("External DOCX relationships are unsupported; use plain text.")
+                        raise InvalidUpload(
+                            "External DOCX relationships are unsupported; use plain text."
+                        )
             if "[Content_Types].xml" not in names or "word/document.xml" not in names:
                 raise InvalidUpload("Not a supported Word DOCX document.")
             content_types = archive.read("[Content_Types].xml")
             if b"macroEnabled" in content_types:
                 raise InvalidUpload("Macro-enabled Word files are unsupported.")
             types = safe_xml(content_types)
-            document_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"
-            if not any(e.get("PartName") == "/word/document.xml" and e.get("ContentType") == document_type for e in types):
+            document_type = (
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"
+            )
+            if not any(
+                e.get("PartName") == "/word/document.xml" and e.get("ContentType") == document_type
+                for e in types
+            ):
                 raise InvalidUpload("DOCX must declare the supported Word document content type.")
             document = safe_xml(archive.read("word/document.xml"))
             if document.tag != WORD_NS + "document":
@@ -84,18 +99,32 @@ def docx_text(data):
             body = document.find(WORD_NS + "body")
             if body is None:
                 raise InvalidUpload("DOCX is missing its document body.")
-            unsupported = {WORD_NS + x for x in ["ins", "del", "altChunk", "txbxContent", "fldChar", "instrText"]}
+            unsupported = {
+                WORD_NS + x
+                for x in ["ins", "del", "altChunk", "txbxContent", "fldChar", "instrText"]
+            }
             if any(e.tag in unsupported for e in body.iter()):
-                raise InvalidUpload("Accept tracked changes and remove fields/text boxes, or upload plain text.")
+                raise InvalidUpload(
+                    "Accept tracked changes and remove fields/text boxes, or upload plain text."
+                )
             paragraphs = []
             for paragraph in body.iter(WORD_NS + "p"):
-                paragraphs.append("".join(
-                    (e.text or "") if e.tag == WORD_NS + "t" else " "
-                    for e in paragraph.iter()
-                    if e.tag in {WORD_NS + "t", WORD_NS + "tab", WORD_NS + "br"}
-                ))
+                paragraphs.append(
+                    "".join(
+                        (e.text or "") if e.tag == WORD_NS + "t" else " "
+                        for e in paragraph.iter()
+                        if e.tag in {WORD_NS + "t", WORD_NS + "tab", WORD_NS + "br"}
+                    )
+                )
             return "\n".join(paragraphs)
-    except (zipfile.BadZipFile, KeyError, RuntimeError, NotImplementedError, EOFError, zlib.error) as exc:
+    except (
+        zipfile.BadZipFile,
+        KeyError,
+        RuntimeError,
+        NotImplementedError,
+        EOFError,
+        zlib.error,
+    ) as exc:
         raise InvalidUpload("Invalid or unsupported DOCX archive.") from exc
 
 
@@ -144,8 +173,15 @@ def inspect_upload(name, data, slot):
                 with Image.open(io.BytesIO(data), formats=["JPEG", "PNG"]) as image:
                     image.load()  # detect truncated images, not only valid headers
             metadata.update(width=width, height=height)
-        except (UnidentifiedImageError, OSError, SyntaxError, ValueError, struct.error,
-                Image.DecompressionBombError, Image.DecompressionBombWarning) as exc:
+        except (
+            UnidentifiedImageError,
+            OSError,
+            SyntaxError,
+            ValueError,
+            struct.error,
+            Image.DecompressionBombError,
+            Image.DecompressionBombWarning,
+        ) as exc:
             if isinstance(exc, InvalidUpload):
                 raise
             raise InvalidUpload("Invalid, truncated or excessively large image.") from exc
@@ -155,6 +191,16 @@ def inspect_upload(name, data, slot):
 
 
 def validate_rule(kind, slot, config):
+    if kind == "evidence":
+        if slot:
+            raise ValueError("Evidence requirements do not use a file slot.")
+        if (
+            not isinstance(config, dict)
+            or not isinstance(config.get("instructions"), str)
+            or not config["instructions"].strip()
+        ):
+            raise ValueError("Describe the evidence a coordinator must inspect.")
+        return
     if slot not in TEXT_SLOTS | IMAGE_SLOTS:
         raise ValueError("Choose a supported file slot.")
     if not isinstance(config, dict):
@@ -177,7 +223,11 @@ def validate_rule(kind, slot, config):
         if config["width"] * config["height"] > MAX_PIXELS:
             raise ValueError("Configured dimensions exceed the 20 megapixel upload limit.")
     elif kind == "required_phrase":
-        if slot not in TEXT_SLOTS or not isinstance(config.get("phrase"), str) or not config["phrase"].strip():
+        if (
+            slot not in TEXT_SLOTS
+            or not isinstance(config.get("phrase"), str)
+            or not config["phrase"].strip()
+        ):
             raise ValueError("Enter a nonempty phrase for an article or caption.")
         if len(config["phrase"]) > 500:
             raise ValueError("Required phrase must be at most 500 characters.")
@@ -187,6 +237,7 @@ def validate_rule(kind, slot, config):
 
 def evaluate(rule, asset):
     """Return one finding. Bounds are inclusive. Unapproved rules never pass."""
+
     def result(status, message):
         return {"status": status, "message": message}
 
@@ -197,6 +248,15 @@ def evaluate(rule, asset):
         validate_rule(kind, rule["slot"], config)
     except ValueError as exc:
         return result("needs_review", str(exc))
+    if kind == "evidence":
+        return (
+            result(
+                "needs_review",
+                "Coordinator must inspect the submitted evidence and record a decision.",
+            )
+            if asset
+            else result("missing", "Submit evidence and an explanation for coordinator review.")
+        )
     if asset is None:
         return result("missing", f"Upload a file in the {rule['slot']} slot.")
     if kind == "required_file":
@@ -208,20 +268,29 @@ def evaluate(rule, asset):
         actual = metadata["words"]
         lo, hi = config.get("min"), config.get("max")
         passed = (lo is None or actual >= lo) and (hi is None or actual <= hi)
-        return result("passed" if passed else "failed",
-                      f"Found {actual} words. Inclusive range: {lo if lo is not None else 0} to {hi if hi is not None else 'no upper limit'}.")
+        return result(
+            "passed" if passed else "failed",
+            f"Found {actual} words. Inclusive range: {lo if lo is not None else 0} to {hi if hi is not None else 'no upper limit'}.",
+        )
     if kind == "dimensions":
         width, height = metadata["width"], metadata["height"]
         passed = (width, height) == (config["width"], config["height"])
-        return result("passed" if passed else "failed",
-                      f"Found {width} × {height} px. Required: {config['width']} × {config['height']} px (exact).")
+        return result(
+            "passed" if passed else "failed",
+            f"Found {width} × {height} px. Required: {config['width']} × {config['height']} px (exact).",
+        )
     phrase = config["phrase"]
     passed = normalized(phrase) in normalized(metadata["text"])
-    return result("passed" if passed else "failed",
-                  f"Required phrase {'found' if passed else 'not found'}: {phrase!r}. Case-insensitive, whitespace-normalized match.")
+    return result(
+        "passed" if passed else "failed",
+        f"Required phrase {'found' if passed else 'not found'}: {phrase!r}. Case-insensitive, whitespace-normalized match.",
+    )
 
 
-def fingerprint(requirements, assets):
+def fingerprint(requirements, assets, evidence=None):
     payload = {"engine": ENGINE_VERSION, "requirements": requirements, "assets": assets}
-    return hashlib.sha256(json.dumps(payload, sort_keys=True, ensure_ascii=False,
-                                     separators=(",", ":")).encode()).hexdigest()
+    if evidence:
+        payload["evidence"] = evidence
+    return hashlib.sha256(
+        json.dumps(payload, sort_keys=True, ensure_ascii=False, separators=(",", ":")).encode()
+    ).hexdigest()

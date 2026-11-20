@@ -1,4 +1,5 @@
 """Read-only dashboard snapshots. Explicit reports perform authoritative file checks."""
+
 from collections import Counter
 
 from django.db.models import OuterRef, Subquery
@@ -18,7 +19,16 @@ def worklist_cards(packages, requirements):
     cards = []
     for package in packages:
         run = runs.get(package.last_run_id)
-        rule_changed = changed_at.get((package.partner_id, package.stage))
+        rule_changed = max(
+            filter(
+                None,
+                [
+                    changed_at.get((package.partner_id, package.stage)),
+                    changed_at.get((package.partner_id, "all")),
+                ],
+            ),
+            default=None,
+        )
         needs_report = (
             run is None
             or run.engine_version != ENGINE_VERSION
@@ -26,11 +36,18 @@ def worklist_cards(packages, requirements):
             or (rule_changed is not None and rule_changed > run.created_at)
         )
         counts = Counter() if needs_report else Counter(f["status"] for f in run.findings)
-        cards.append({
-            "package": package,
-            "run": run,
-            "needs_report": bool(needs_report),
-            "counts": counts,
-            "ready": bool(run and run.findings and not needs_report and counts["passed"] == len(run.findings)),
-        })
+        cards.append(
+            {
+                "package": package,
+                "run": run,
+                "needs_report": bool(needs_report),
+                "counts": counts,
+                "ready": bool(
+                    run
+                    and run.findings
+                    and not needs_report
+                    and counts["passed"] + counts["not_applicable"] == len(run.findings)
+                ),
+            }
+        )
     return cards

@@ -47,7 +47,7 @@ apps.get_model('checker','CheckRun').objects.create(package=k,fingerprint='b'*64
 apps.get_model('checker','AuditEvent').objects.create(actor=coordinator,action='legacy.event',target='legacy')
 executor=MigrationExecutor(connection)
 executor.migrate(executor.loader.graph.leaf_nodes())
-from checker.models import Account,Membership,Workspace,Partner,Asset,RequirementRevision,ManualReview,CheckRun,AuditEvent
+from checker.models import Account,Membership,Workspace,Partner,Asset,Requirement,RequirementRevision,ManualReview,CheckRun,AuditEvent,Evidence
 assert Workspace.objects.count()==1
 assert Partner.objects.get(pk=p.pk).workspace_id==Workspace.objects.get().pk
 assert Membership.objects.get(user_id=coordinator.pk).role=='coordinator'
@@ -57,6 +57,10 @@ assert Account.objects.filter(email__isnull=True).count()==1
 assert Asset.objects.get(pk=a.pk).file.name=='packages/unchanged.png'
 assert RequirementRevision.objects.get().reason=='Retain this history'
 assert ManualReview.objects.get().note=='Retain this review'
+assert ManualReview.objects.get().fingerprint=='b'*64 and ManualReview.objects.get().decision==''
+assert Requirement.objects.get().responsibility=='unspecified'
+assert Requirement.objects.get().applicability=='required'
+assert not Evidence.objects.exists()
 assert CheckRun.objects.get().fingerprint=='b'*64
 assert AuditEvent.objects.get().workspace_id==Workspace.objects.get().pk
 print('LEGACY MIGRATION REHEARSAL PASSED: accounts, roles, duplicates, original paths, revisions, reviews, reports, audit.')

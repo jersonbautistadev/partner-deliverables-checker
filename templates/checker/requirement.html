@@ -6,9 +6,11 @@
 <div class="two-columns">
   <section class="panel padded" aria-labelledby="current-instruction"><h2 id="current-instruction">Current instruction</h2><dl>
     <dt>Review status</dt><dd>{% if requirement.approved and not requirement.ambiguous %}<span class="badge passed">Approved</span>{% else %}<span class="badge needs_review">Needs clarification or approval</span>{% endif %}</dd>
-    <dt>Check type and file slot</dt><dd>{{ requirement.get_kind_display }} · {{ requirement.get_slot_display }}</dd>
-    <dt>Rule settings</dt><dd><pre>{{ requirement.config }}</pre></dd>
-    <dt>Source reference</dt><dd>{{ requirement.source }}</dd>
+    <dt>Check type and file slot</dt><dd>{{ requirement.get_kind_display }}{% if requirement.slot %} · {{ requirement.get_slot_display }}{% else %} / No file slot{% endif %}</dd>
+    <dt>Responsible party</dt><dd>{{ requirement.get_responsibility_display }}</dd>
+    <dt>Applicability</dt><dd>{{ requirement.get_applicability_display }}{% if requirement.conditions %} / {{ requirement.conditions }}{% endif %}</dd>
+    {% if requirement.kind == 'evidence' or requirement.kind == 'manual' %}<dt>Instruction</dt><dd>{{ requirement.config.instructions|default:'No instruction recorded.'|linebreaksbr }}</dd>{% else %}<dt>Rule settings</dt><dd><pre>{{ requirement.config }}</pre></dd>{% endif %}
+    <dt>Source reference</dt><dd>{{ requirement.source|urlize }}</dd>
     <dt>Deadline · Asia/Manila</dt><dd>{{ requirement.deadline|date:'F d, Y · H:i'|default:'Not configured' }}</dd>
   </dl></section>
   <section class="panel padded" aria-labelledby="change-history"><h2 id="change-history">Change history</h2><p class="muted">Saved snapshots are retained when this instruction changes.</p>

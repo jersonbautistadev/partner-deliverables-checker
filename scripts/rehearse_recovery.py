@@ -44,7 +44,7 @@ from django.contrib.auth import get_user_model
 from django.utils import timezone
 from django.core.files.uploadedfile import SimpleUploadedFile
 from checker.models import Account,Membership,Workspace,Partner,Package,Requirement
-from checker.services import store_asset,ensure_report
+from checker.services import store_asset,ensure_report,submit_evidence,record_review
 from django.db import connection
 if connection.vendor == 'postgresql':
     with connection.cursor() as cur:
@@ -68,6 +68,10 @@ k=Package.objects.create(partner=p,stage='pre',title='Recovered package',owner=u
 Requirement.objects.create(partner=p,stage='pre',title='Article required',kind='required_file',slot='article',approved=True)
 store_asset(k,users[1],'article',SimpleUploadedFile('original.txt',b'original recovery fixture'))
 assert ensure_report(k).findings[0]['status']=='passed'
+r=Requirement.objects.create(partner=p,stage='pre',title='Published acknowledgement',kind='evidence',slot='',config={'instructions':'Inspect published credit'},source='Fictional recovery brief',approved=True,responsibility='partner')
+first=submit_evidence(k,r,users[1],0,'https://example.test/first','Original observation')
+submit_evidence(k,r,users[1],first.pk,'https://example.test/corrected','Corrected observation')
+record_review(k,r,users[0],ensure_report(k).fingerprint,True,'Inspected corrected publication evidence.')
 """)
         subprocess.run(
             [
@@ -115,13 +119,17 @@ if connection.vendor == 'postgresql':
         assert cur.fetchone()[0]=='retained target public data'
 from django.contrib.auth import get_user_model
 from django.test import Client,override_settings
-from checker.models import Asset,Package
+from checker.models import Asset,Package,Evidence,ManualReview
 from checker.services import ensure_report
 k=Package.objects.get(title='Recovered package')
 a=Asset.objects.get(package=k)
 with a.file.open('rb') as stream:
     assert stream.read()==b'original recovery fixture'
 assert ensure_report(k).findings[0]['status']=='passed'
+assert Evidence.objects.filter(package=k).count()==2
+assert Evidence.objects.filter(package=k).first().note=='Corrected observation'
+assert ManualReview.objects.get(package=k).note=='Inspected corrected publication evidence.'
+assert all(f['status']=='passed' for f in ensure_report(k).findings)
 with override_settings(ALLOWED_HOSTS=['testserver']):
     for username in ['recovery_coord','recovery_owner']:
         client=Client()
@@ -130,11 +138,13 @@ with override_settings(ALLOWED_HOSTS=['testserver']):
         download=client.get(f'/packages/{k.pk}/assets/{a.pk}/download/')
         assert b''.join(download.streaming_content)==b'original recovery fixture'
         assert 'no-store' in download['Cache-Control']
+        assert client.get(f'/packages/{k.pk}/evidence/{Evidence.objects.first().requirement_id}/history/').status_code==200
     client=Client()
     client.force_login(get_user_model().objects.get(username='recovery_other'))
     assert client.get(f'/packages/{k.pk}/').status_code==404
     assert client.get(f'/packages/{k.pk}/assets/{a.pk}/download/').status_code==404
-print('RESTORE REHEARSAL PASSED: encrypted database, original bytes, reports, both roles, and cross-workspace denial.')
+    assert client.get(f'/packages/{k.pk}/evidence/{Evidence.objects.first().requirement_id}/history/').status_code==404
+print('RESTORE REHEARSAL PASSED: encrypted database, original bytes, evidence history, reviews, reports, both roles, and cross-workspace denial.')
 """,
             restored,
         )

@@ -1,0 +1,9 @@
+{% extends 'base.html' %}
+{% block title %}Evidence history | Partner Deliverables Checker{% endblock %}
+{% block content %}
+<a class="back" href="{% url 'package_detail' package.id %}">← Deliverables report</a>
+<div class="page-heading"><div><h1>Evidence history</h1><p class="report-name">{{ requirement.title }}</p><p class="meta">{{ package.partner.name }} / {{ package.title }}</p></div></div>
+<p>Submissions are retained as private history. Reviews apply to an exact package version; older evidence is not a current approval.</p>
+{% for item in history %}<article class="history-entry"><h2>{% if forloop.first and history.number == 1 %}Current submission{% else %}Earlier submission{% endif %}</h2><p class="meta">{{ item.actor.username }} / {{ item.created_at|date:'M d, Y / H:i' }} Asia/Manila</p><p>{{ item.note|linebreaksbr }}</p>{% if item.url %}<a class="evidence-link" href="{{ item.url }}" target="_blank" rel="noopener noreferrer">{{ item.url }}</a>{% endif %}</article>{% empty %}<p>No evidence submitted yet.</p>{% endfor %}
+{% if history.has_other_pages %}<nav aria-label="Evidence history pages">{% if history.has_previous %}<a href="?page={{ history.previous_page_number }}">Newer submissions</a>{% endif %}<span class="meta">Page {{ history.number }} of {{ history.paginator.num_pages }}</span>{% if history.has_next %}<a href="?page={{ history.next_page_number }}">Older submissions</a>{% endif %}</nav>{% endif %}
+{% endblock %}

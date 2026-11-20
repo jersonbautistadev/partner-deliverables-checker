@@ -10,9 +10,9 @@ from django.test import Client, TransactionTestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
-from checker.models import Account, Asset, Membership, Package, Partner, Workspace
+from checker.models import Account, Asset, Evidence, Membership, Package, Partner, Requirement, Workspace
 from checker.security import LimitExceeded
-from checker.services import store_asset
+from checker.services import store_asset, submit_evidence
 
 
 @skipUnless(connection.vendor == "postgresql", "Row-lock behavior requires PostgreSQL.")
@@ -67,6 +67,29 @@ class PostgreSQLConcurrencyTests(TransactionTestCase):
             result = list(pool.map(upload, range(2)))
         self.assertCountEqual(result, ["stored", "quota"])
         self.assertEqual(Asset.objects.count(), 1)
+
+    @override_settings(MAX_EVIDENCE_REVISIONS=1)
+    def test_concurrent_evidence_submissions_cannot_exceed_workspace_quota(self):
+        rule = Requirement.objects.create(partner=self.partner, stage="pre", title="Published story", kind="evidence", slot="", source="Fictional brief")
+        packages = [Package.objects.create(partner=self.partner, stage="pre", title=f"Evidence {user.pk}", owner=user) for user in self.users]
+        barrier = Barrier(2)
+
+        def submit(index):
+            try:
+                package = Package.objects.select_related("partner").get(pk=packages[index].pk)
+                barrier.wait(timeout=10)
+                try:
+                    submit_evidence(package, rule, self.users[index], 0, "https://example.test/story", "Synthetic observation")
+                    return "stored"
+                except LimitExceeded:
+                    return "quota"
+            finally:
+                connections.close_all()
+
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            result = list(pool.map(submit, range(2)))
+        self.assertCountEqual(result, ["stored", "quota"])
+        self.assertEqual(Evidence.objects.count(), 1)
 
     def test_two_coordinators_cannot_simultaneously_remove_the_last_coordinator(self):
         barrier = Barrier(2)

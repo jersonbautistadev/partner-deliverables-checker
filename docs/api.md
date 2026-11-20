@@ -10,6 +10,28 @@ Unauthenticated application requests redirect to login. An authenticated but unv
 
 `GET /health/` is process liveness. `GET /ready/` returns only ready/unavailable and uses 503 when database/storage/mail readiness fails. It does not validate every provider permission or capacity.
 
+## Evidence and coverage additions
+
+Reports retain the same JSON envelope. Newly generated findings may include
+`responsibility`, `applicability`, `conditions`, an `evidence` kind and a
+`not_applicable` status. Older cached findings can omit the new metadata. Consumers
+must handle unknown/additive finding fields and must not treat a resolved report as
+proof of full agreement completion or delivery.
+
+- `GET /coverage/?partner=ID`: recorded obligations and visible last-report snapshots;
+  optional partner filtering is scoped to the selected workspace. This read does not
+  regenerate reports or fetch originals/external evidence.
+- `POST /packages/ID/evidence/REQUIREMENT/`: CSRF-protected form with `version`
+  (latest evidence ID, or zero), optional HTTPS `url`, and required `note`. Package
+  ownership/coordinator access and applicable requirement IDs are checked server-side.
+  Invalid input returns 400, stale evidence returns 409, quota exhaustion returns 429,
+  and report/storage failures roll back the submission and return 503.
+- `GET /packages/ID/evidence/REQUIREMENT/history/`: authorized, private, paginated
+  submission history. No public evidence or unauthenticated URL-fetch endpoint exists.
+- The existing review POST also accepts `not_applicable` for approved, unambiguous
+  optional/conditional evidence obligations only. A review note and current report
+  fingerprint remain required. Contributors cannot record reviews.
+
 `POST /ops/mail/` is a separate machine endpoint. It requires `Authorization: Bearer OPS_SECRET` with at least 32 random characters, accepts no payload and processes at most five queued messages. It does not use session authentication and is a CSRF exemption. Keep the secret in the scheduler and application secret stores; never in the URL or browser. Its response reports only the delivered count.
 
 `POST /ops/maintenance/` uses the same bearer-secret protection and no browser session. It prunes expired security records and sessions without deleting originals, revisions or audit history. Schedule it daily; the optional GitHub workflow is disabled until explicitly enabled. Both machine endpoints reject GET.

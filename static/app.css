@@ -203,3 +203,10 @@ nav a { min-height: 44px; }
 .policy-page p { line-height: 1.65; }
 .support-address { display: inline-flex; align-items: center; min-height: 44px; overflow-wrap: anywhere; }
 .site-footer a { display: inline-flex; align-items: center; min-height: 44px; }
+.evidence-summary { margin-block: var(--space-4); padding-left: var(--space-3); border-left: 2px solid var(--line); }
+.evidence-summary h4 { margin-bottom: var(--space-2); }
+.evidence-link, .finding-reference a { overflow-wrap: anywhere; }
+.coverage-row { padding-block: var(--space-4); border-top: 1px solid var(--line); }
+.coverage-row h2 { font: 600 1rem/1.5 var(--body); }
+.coverage-row dl { font-size: .875rem; }
+.button:disabled { opacity: .6; cursor: not-allowed; }

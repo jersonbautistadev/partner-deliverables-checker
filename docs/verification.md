@@ -1,6 +1,46 @@
 # Verification record
 
-Latest evidence: [18 November 2026 production acceptance](production-acceptance-2026-11-18.md),
+## 20 November 2026 evidence-workflow candidate
+
+Branch `feat/linked-evidence-coverage` adds private linked/off-site evidence,
+responsibility and applicability, across-stage coverage and explicit review outcomes.
+This candidate has not been promoted to the public production pilot. Earlier hosted
+acceptance records below describe their deployed version, not this candidate.
+
+Checks actually executed on the candidate:
+
+| Check | Result and scope |
+| --- | --- |
+| Existing baseline | 150 tests passed on SQLite, nine PostgreSQL-only skips. |
+| Complete updated SQLite suite | 177 tests passed, ten PostgreSQL-only skips; 83.612 seconds. |
+| Complete updated PostgreSQL suite | 177 tests passed, no skips; 107.900 seconds. Includes the evidence-quota race and encrypted restore with evidence history/reviews and original downloads. |
+| Focused negative probes | Two in-memory mutations were detected: bypassed package isolation and omitted evidence fingerprints. Application source was not mutated. |
+| Legacy migration rehearsal | Preserved accounts, roles, original paths, revisions, stored fingerprints, boolean reviews and audit records. New fields receive backward-compatible defaults. |
+| Standalone encrypted restore rehearsal | Recovered original bytes, two evidence versions, review decisions, both authorized roles and cross-workspace denial. |
+| Operator SQL rehearsal | Passed paused-job boundaries, role denials, ready/mail/maintenance/backup/capacity contracts, failure handling and scoped log retention on isolated PostgreSQL. |
+| Ruff, Django checks, migration consistency, static collection | Passed. |
+| Runtime dependency audit | No known vulnerabilities reported for the locked runtime dependencies. |
+| Production configuration checks | `check --deploy --fail-level WARNING` passed with explicit CI fixture settings; this does not verify live provider configuration. |
+| Managed staging migration | Authenticated the encrypted pre-change backup and verified five original digests. Applied migration 0005. Verified runtime SELECT/INSERT and denied UPDATE/DELETE on the new evidence table. |
+| Managed staging runtime-role exercise | CSRF-protected submit/review/replace, stale review, retained history and outsider denial passed using Django's request client against the actual managed database. Synthetic writes rolled back; original-file records stayed unchanged. An initial connection dropped; the retry checked for abandoned fixtures before proceeding. This is separate from a hosted Vercel HTTP exercise. |
+| Orca local browser | Exercised sign-in, evidence submission, explained review, replacement returning to needs review, and two-version history. Inspected report/coverage/history at 390, 768 and 1100 CSS-pixel widths. Coverage/history width probes found no horizontal overflow. No full assistive-technology or WCAG-conformance claim. |
+
+An initial full-suite rerun failed on the intentionally changed dashboard label.
+Updated that wording assertion while retaining its ready-count, stale-report and
+no-storage-read assertions; the final complete suites above passed. No authorization
+expectations were relaxed. The private source rehearsal remains separate from public
+fixtures and repository artifacts; transcribed drafts were not treated as fulfillment.
+
+Changed implementation groups: `checker/models.py`, migration 0005,
+`checker/forms.py`, `checker/engine.py`, `checker/services.py`, `checker/views.py`,
+`checker/coverage.py`, `checker/worklist.py`, `checker/urls.py`, middleware/settings,
+`checker/backup.py`, evidence/concurrency/public/recovery tests, both rehearsal
+scripts, the shared/template report/coverage/history/form views, `static/app.css`,
+README, environment example, and API/architecture/operations/verification documents.
+
+## Earlier deployed evidence
+
+Latest production evidence: [18 November 2026 production acceptance](production-acceptance-2026-11-18.md),
 following [pilot rollout preparation](production-rollout-2026-11-18.md),
 following [17 November staging acceptance and operations](staging-verification-2026-11-17.md),
 following the [dev-team fixes](dev-team-fixes-2026-11-16.md) and

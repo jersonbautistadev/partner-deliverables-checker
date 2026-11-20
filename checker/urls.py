@@ -1,6 +1,6 @@
 from django.urls import path
 
-from checker import operations, views
+from checker import coverage, operations, views
 
 urlpatterns = [
     path("ops/maintenance/", operations.maintenance, name="maintenance"),
@@ -8,6 +8,7 @@ urlpatterns = [
     path("ops/mail/", operations.dispatch_mail, name="dispatch_mail"),
     path("", views.dashboard, name="dashboard"),
     path("partners/", views.partners, name="partners"),
+    path("coverage/", coverage.coverage, name="coverage"),
     path("partners/new/", views.partner_new, name="partner_new"),
     path("requirements/new/", views.requirement_edit, name="requirement_new"),
     path("requirements/<int:pk>/", views.requirement_detail, name="requirement_detail"),
@@ -18,6 +19,8 @@ urlpatterns = [
     path("packages/<int:pk>/assets/<int:asset_id>/download/", views.asset_download, name="asset_download"),
     path("packages/<int:pk>/assets/<int:asset_id>/remove/", views.asset_remove, name="asset_remove"),
     path("packages/<int:pk>/reviews/<int:requirement_id>/", views.manual_review, name="manual_review"),
+    path("packages/<int:pk>/evidence/<int:requirement_id>/", views.evidence_submit, name="evidence_submit"),
+    path("packages/<int:pk>/evidence/<int:requirement_id>/history/", views.evidence_history, name="evidence_history"),
     path("audit/", views.audit_log, name="audit"),
     path("api/v1/packages/", views.api_packages, name="api_packages"),
     path("api/v1/packages/<int:pk>/report/", views.api_report, name="api_report"),
