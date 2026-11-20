@@ -40,6 +40,35 @@ README, environment example, and API/architecture/operations/verification docume
 
 ## Earlier deployed evidence
 
+### 21 November 2026 protected evidence Preview
+
+The candidate at application commit `0131e22` was deployed as protected Preview
+`8iLwQAxKDMy5mHgDQx7LyctwUYnS`. Its first build failed because the staging Preview
+variables were restricted to the previous branch. After the owner completed
+Vercel identity verification, the 24 existing staging-only variables were scoped
+to protected Preview branches without changing stored values. A before/after hash
+of all Production variable records matched; project protection remained
+`all_except_custom_domains`. No production promotion or main-branch merge occurred.
+
+The successful redeployment passed the real build/deployment check and served
+health, readiness and sign-in with HTTP 200. Without platform authorization the
+Preview redirects to Vercel authentication. With platform authorization but no
+Django session, private package access redirects to app sign-in.
+
+Real hosted HTTP checks passed using two fictional teams and verified synthetic
+fixtures, without signup/reset/invitation email. They exercised submit/review/replace,
+retained evidence history, stale review and stale edit rejection, HTTPS URL validation,
+contributor review denial, different roles across workspaces, direct report/API/history/
+download isolation, submitted requirement IDs, optional non-applicability decisions,
+and missing-CSRF rejection. Uploading a supporting synthetic image invalidated its
+previous review, and its protected download matched the original SHA-256. Collected
+CSS included the feature styles. Real partnership data was not placed in those teams.
+
+Orca's actual hosted Preview was used for fixture sign-in/workspace selection and
+report/history inspection at 390, 768 and 1100 CSS-pixel widths. Phone report and
+tablet history width probes showed no horizontal overflow. This remains separate
+from a complete assistive-technology assessment or proof of external fulfillment.
+
 Latest production evidence: [18 November 2026 production acceptance](production-acceptance-2026-11-18.md),
 following [pilot rollout preparation](production-rollout-2026-11-18.md),
 following [17 November staging acceptance and operations](staging-verification-2026-11-17.md),

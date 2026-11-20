@@ -31,7 +31,7 @@ BEGIN
             extensions.http_header('X-GitHub-Api-Version', '2026-03-10'),
             extensions.http_header('User-Agent', 'PDC-staging-backup-scheduler')
         ],
-        'application/json', '{"ref":"fix/dev-team-release-gaps"}'
+        'application/json', '{"ref":"feat/linked-evidence-coverage"}'
     )::extensions.http_request);
     PERFORM extensions.http_reset_curlopt();
     IF response.status IS DISTINCT FROM 200 OR COALESCE(response.content_type, '') NOT LIKE 'application/json%'
