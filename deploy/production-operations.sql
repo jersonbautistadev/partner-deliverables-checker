@@ -171,7 +171,7 @@ BEGIN
     SELECT decrypted_secret INTO STRICT ref FROM vault.decrypted_secrets
         WHERE name='pdc_production_backup_ref';
     IF credential !~ '^github_pat_[A-Za-z0-9_]{40,250}$'
-       OR ref NOT IN ('main','fix/dev-team-release-gaps') THEN
+       OR ref NOT IN ('main','fix/dev-team-release-gaps','feat/linked-evidence-coverage') THEN
         RAISE EXCEPTION 'Invalid production backup dispatch configuration';
     END IF;
     PERFORM extensions.http_reset_curlopt();

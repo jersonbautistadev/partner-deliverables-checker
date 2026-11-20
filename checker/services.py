@@ -1,5 +1,7 @@
 """Application writes live here so audit records and changes commit together."""
 
+import hashlib
+import json
 import logging
 from pathlib import Path
 
@@ -115,6 +117,29 @@ def current_inputs(package):
     return reqs, assets, fingerprint(reqs, assets, evidence=evidence)
 
 
+def evidence_input(entry):
+    if entry is None:
+        return None
+    return {"id": entry.id, "url": entry.url, "note": entry.note, "actor_id": entry.actor_id}
+
+
+def review_key(rule, asset, evidence):
+    """Scope a coordinator decision to one requirement and only the input it inspected.
+
+    Unrelated files, evidence or requirements in the same package must not reset it.
+    """
+    payload = {
+        "scope": "requirement-review-v1",
+        "engine": ENGINE_VERSION,
+        "requirement": rule,
+        "asset": asset,
+        "evidence": evidence,
+    }
+    return hashlib.sha256(
+        json.dumps(payload, sort_keys=True, ensure_ascii=False, separators=(",", ":")).encode()
+    ).hexdigest()
+
+
 @transaction.atomic
 def ensure_report(package, force=False):
     # Same package row is locked by uploads/removals/reviews. SQLite serializes writes.
@@ -123,24 +148,32 @@ def ensure_report(package, force=False):
     )
     reqs, assets, signature = current_inputs(package)
     latest = package.runs.first()
-    if latest and latest.fingerprint == signature and not force:
+    # Runs saved before per-requirement review keys existed are regenerated once.
+    if (
+        latest
+        and latest.fingerprint == signature
+        and not force
+        and all("review_key" in f for f in latest.findings if f.get("requirement_id"))
+    ):
         return latest
     by_slot = {a["slot"]: a for a in assets if a["available"]}
     evidence = latest_evidence(package)
     findings = []
     for rule in reqs:
-        finding = evaluate(
-            rule,
-            evidence.get(rule["id"]) if rule["kind"] == "evidence" else by_slot.get(rule["slot"]),
-        )
+        is_evidence = rule["kind"] == "evidence"
+        current = evidence.get(rule["id"]) if is_evidence else None
+        asset = None if is_evidence else by_slot.get(rule["slot"])
+        key = review_key(rule, asset, evidence_input(current) if is_evidence else None)
+        finding = evaluate(rule, current if is_evidence else asset)
         if (
             rule["kind"] in {"manual", "evidence"}
             and finding["status"] in {"needs_review", "missing"}
             and rule["approved"]
             and not rule["ambiguous"]
         ):
+            # Legacy reviews stored the whole-package fingerprint; new ones store `key`.
             review = package.reviews.filter(
-                requirement_id=rule["id"], fingerprint=signature
+                requirement_id=rule["id"], fingerprint__in=[signature, key]
             ).first()
             if review and (finding["status"] != "missing" or review.decision == "not_applicable"):
                 status = review.decision or ("passed" if review.passed else "failed")
@@ -162,6 +195,7 @@ def ensure_report(package, force=False):
                 "responsibility": rule.get("responsibility", "unspecified"),
                 "applicability": rule.get("applicability", "required"),
                 "conditions": rule.get("conditions", ""),
+                "review_key": key,
             }
         )
     if not reqs:
@@ -261,7 +295,10 @@ def record_review(package, requirement, actor, signature, passed, note, decision
         Package.objects.select_for_update(of=("self",)).select_related("partner").get(pk=package.pk)
     )
     run = ensure_report(package)
-    if run.fingerprint != signature:
+    finding = next((f for f in run.findings if f.get("requirement_id") == requirement.id), None)
+    current_key = finding.get("review_key") if finding else None
+    # Forms carry the finding's review key; older open forms carry the package fingerprint.
+    if signature not in {run.fingerprint, current_key}:
         raise ValidationError(
             "Files, evidence or requirements changed. Reload the report before reviewing."
         )
@@ -294,7 +331,7 @@ def record_review(package, requirement, actor, signature, passed, note, decision
         package=package,
         requirement=requirement,
         actor=actor,
-        fingerprint=signature,
+        fingerprint=current_key or run.fingerprint,
         passed=passed,
         decision=decision,
         note=note,
@@ -306,6 +343,7 @@ def record_review(package, requirement, actor, signature, passed, note, decision
         workspace=package.partner.workspace,
         requirement_id=requirement.id,
         fingerprint=signature,
+        review_key=current_key,
         passed=passed,
         decision=decision,
     )

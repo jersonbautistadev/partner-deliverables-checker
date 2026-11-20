@@ -279,7 +279,8 @@ def package_detail(request, pk):
     entries = []
     for index, finding in enumerate(findings):
         form = ReviewForm(
-            initial={"fingerprint": card["run"].fingerprint}, auto_id=f"review_{index}_%s"
+            initial={"fingerprint": finding.get("review_key") or card["run"].fingerprint},
+            auto_id=f"review_{index}_%s",
         )
         can_exclude = finding["kind"] == "evidence" and finding.get("applicability") in {
             "optional",

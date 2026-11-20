@@ -550,3 +550,73 @@ class EvidenceTests(TestCase):
         self.assertNotContains(response, "Stage not confirmed</a>")
         coverage = self.client.get(reverse("coverage"))
         self.assertContains(coverage, "A coordinator must confirm the stage", count=2)
+
+    def finding_for(self, rule):
+        return next(
+            f for f in ensure_report(self.package).findings if f["requirement_id"] == rule.pk
+        )
+
+    def test_review_survives_unrelated_evidence_and_new_requirements(self):
+        other = Requirement.objects.create(
+            partner=self.partner,
+            stage="pre",
+            title="Post the partner album",
+            kind="evidence",
+            slot="",
+            config={"instructions": "Inspect the album post."},
+            source="Fictional agreement section 5",
+            approved=True,
+        )
+        self.assertEqual(self.submit().status_code, 302)
+        self.login(self.coord)
+        key = self.finding_for(self.rule)["review_key"]
+        response = self.client.post(
+            self.url("manual_review"),
+            {"fingerprint": key, "decision": "passed", "note": "Inspected the published page."},
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(ManualReview.objects.get().fingerprint, key)
+        # Evidence for a different obligation and a newly added obligation leave it intact.
+        self.login(self.owner)
+        response = self.client.post(
+            self.url(rule=other),
+            {"version": 0, "url": "", "note": "Album posted on the event page."},
+        )
+        self.assertEqual(response.status_code, 302)
+        Requirement.objects.create(
+            partner=self.partner,
+            stage="all",
+            title="Acknowledge throughout",
+            kind="evidence",
+            slot="",
+            config={"instructions": "Inspect acknowledgements."},
+            source="Fictional agreement section 6",
+            approved=True,
+        )
+        self.assertEqual(self.finding_for(self.rule)["status"], "passed")
+        self.assertEqual(self.finding_for(other)["status"], "needs_review")
+        # Changing this obligation's own evidence still requires a fresh review.
+        current = Evidence.objects.filter(requirement=self.rule).first()
+        self.assertEqual(self.submit(version=current.pk, note="Corrected link.").status_code, 302)
+        self.assertEqual(self.finding_for(self.rule)["status"], "needs_review")
+        # A form opened before that change is rejected.
+        self.login(self.coord)
+        response = self.client.post(
+            self.url("manual_review"),
+            {"fingerprint": key, "decision": "passed", "note": "Old form."},
+        )
+        self.assertEqual(response.status_code, 409)
+
+    def test_editing_a_requirement_invalidates_only_its_own_review(self):
+        self.assertEqual(self.submit().status_code, 302)
+        self.login(self.coord)
+        key = self.finding_for(self.rule)["review_key"]
+        self.client.post(
+            self.url("manual_review"),
+            {"fingerprint": key, "decision": "passed", "note": "Inspected."},
+        )
+        self.assertEqual(self.finding_for(self.rule)["status"], "passed")
+        Requirement.objects.filter(pk=self.rule.pk).update(
+            config={"instructions": "Inspect the page and the logo placement."}, revision=2
+        )
+        self.assertEqual(self.finding_for(self.rule)["status"], "needs_review")
