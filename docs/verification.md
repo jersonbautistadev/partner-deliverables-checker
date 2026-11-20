@@ -4,8 +4,9 @@
 
 Branch `feat/linked-evidence-coverage` adds private linked/off-site evidence,
 responsibility and applicability, across-stage coverage and explicit review outcomes.
-This candidate has not been promoted to the public production pilot. Earlier hosted
-acceptance records below describe their deployed version, not this candidate.
+This candidate was promoted to the public production pilot on 21 November 2026; see
+[the production rollout record](production-evidence-rollout-2026-11-21.md). Earlier
+hosted acceptance records below describe their deployed version, not this candidate.
 
 21 November 2026 pre-rollout code review: reviewed the full PR #2 diff (models,
 migration, report engine, review/evidence services, views, coverage and templates).
