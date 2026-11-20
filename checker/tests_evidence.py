@@ -521,3 +521,32 @@ class EvidenceTests(TestCase):
         form = RequirementForm(data, workspace=self.team)
         self.assertFalse(form.is_valid())
         self.assertIn("applicability", form.errors)
+
+    def test_unconfirmed_stage_drafts_are_counted_not_listed_as_missing_packages(self):
+        for index in range(2):
+            Requirement.objects.create(
+                partner=self.partner,
+                stage="unset",
+                title=f"Unconfirmed draft {index}",
+                kind="evidence",
+                slot="",
+                config={"instructions": "Inspect evidence"},
+                source="Fictional section 9",
+            )
+        Requirement.objects.create(
+            partner=self.partner,
+            stage="all",
+            title="Across-stage credit",
+            kind="evidence",
+            slot="",
+            config={"instructions": "Inspect evidence"},
+            source="Fictional section 10",
+        )
+        self.login(self.coord)
+        response = self.client.get(reverse("dashboard"))
+        self.assertEqual(response.context["unconfirmed_stage_count"], 2)
+        self.assertEqual(response.context["missing_stages"], [])
+        self.assertContains(response, "2 recorded obligations")
+        self.assertNotContains(response, "Stage not confirmed</a>")
+        coverage = self.client.get(reverse("coverage"))
+        self.assertContains(coverage, "A coordinator must confirm the stage", count=2)

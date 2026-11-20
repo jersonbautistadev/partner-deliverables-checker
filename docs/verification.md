@@ -7,6 +7,17 @@ responsibility and applicability, across-stage coverage and explicit review outc
 This candidate has not been promoted to the public production pilot. Earlier hosted
 acceptance records below describe their deployed version, not this candidate.
 
+21 November 2026 pre-rollout code review: reviewed the full PR #2 diff (models,
+migration, report engine, review/evidence services, views, coverage and templates).
+One defect was fixed: the dashboard listed every stage-unconfirmed obligation as a
+stage with "No visible package", although no package can use that stage. Those
+obligations are now counted with a link to coverage, which states that the stage
+needs confirmation. The across-stage check no longer depends on requirement ordering.
+After the fix, 178 tests passed on SQLite (ten PostgreSQL-only skips) and 178 on local
+PostgreSQL, including the encrypted PostgreSQL backup/restore test with client
+tools. Ruff and migration-consistency checks passed. Hosted checks were not repeated
+for this template/view-only change.
+
 Checks actually executed on the candidate:
 
 | Check | Result and scope |

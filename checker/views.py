@@ -101,15 +101,19 @@ def dashboard(request):
     deadlines = [r for r in dated if r.deadline >= now]
     overdue = [r for r in dated if r.deadline < now]
     # Contributors can see shared instructions/deadlines, including stages with no package yet.
-    stages = {(c["package"].partner_id, c["package"].stage) for c in cards}
-    missing_stages = []
+    package_stages = {(c["package"].partner_id, c["package"].stage) for c in cards}
+    package_partners = {partner_id for partner_id, _ in package_stages}
+    # No package can use an unconfirmed stage; count those for confirmation instead.
+    unconfirmed_stage_count = sum(r.stage == "unset" for r in requirements)
+    missing_stages, listed = [], set()
     for r in requirements:
         key = (r.partner_id, r.stage)
-        if key not in stages and not (
-            r.stage == "all" and any(pid == r.partner_id for pid, _ in stages)
-        ):
-            missing_stages.append(r)
-            stages.add(key)
+        if r.stage == "unset" or key in package_stages or key in listed:
+            continue
+        if r.stage == "all" and r.partner_id in package_partners:
+            continue
+        missing_stages.append(r)
+        listed.add(key)
     action_page = Paginator(action_cards, 20).get_page(request.GET.get("action_page"))
     ready_page = Paginator([c for c in cards if c["ready"]], 20).get_page(
         request.GET.get("ready_page")
@@ -131,6 +135,7 @@ def dashboard(request):
             "deadlines": deadline_groups(deadlines),
             "overdue": deadline_groups(overdue),
             "missing_stages": missing_stages,
+            "unconfirmed_stage_count": unconfirmed_stage_count,
             "now": now,
         },
     )
