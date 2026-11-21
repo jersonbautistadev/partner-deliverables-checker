@@ -38,7 +38,7 @@ made by the owner-authenticated dashboard session.
 
 Code-only rollback: promote `dpl_6CfY…` (pre-fix) or, before any evidence or
 non-applicability decision exists, the previous release `dpl_EHMB7muEkQxpvbXmoJNWHzq9S2qz`.
-Once evidence records exist, prefer a forward fix; see [operations](operations.md).
+Once evidence records exist, prefer a forward fix; see [operations](../operations.md).
 The three other Vercel projects connected to this repository were not changed.
 
 ## Follow-up release: evidence text wrapping (21 November 2026, 08:2x UTC)
@@ -52,3 +52,24 @@ contains the new rule. The owner workspace's evidence submissions and review cou
 were unchanged by the release. The one-hour team-scoped Vercel token created only to
 trigger identity verification was revoked before deployment; no token value was stored.
 Code-only rollback: promote `dpl_Bf83upHJ2nCoMs7rxosYdwRQgXfH`.
+
+## Merge to main and backup ref change (21 November 2026, 08:30 UTC)
+
+PR #1 and PR #2 were merged into `main` with merge commits; `main` (`a0ab537`) has the
+same tree as the released feature branch. Vercel's production branch is `main`, so each
+merge triggered an automatic production deployment. The PR #1 merge (`129ceaf`, which
+predates the evidence feature) served the public domain from 08:30:57 to 08:31:18 UTC,
+about 21 seconds, before the PR #2 build replaced it. A read-only check found no
+reports, reviews, evidence, requirement edits, uploads or audit events written in that
+window, and totals matched. Lesson: when the production branch auto-deploys, land
+stacked branches in one step (for example merge the top branch directly). Smoke checks
+passed on the `main` build `dpl_3HyjZvmLzimBtzMy8mXFtEQc5pQh`.
+
+`PRODUCTION_BACKUP_REF` and Vault `pdc_production_backup_ref` now point to `main`; a
+backup dispatched by the production scheduler function itself succeeded and was
+checksum-verified (`pdc-20261121T083349253026.pdc`). Staging backups still use
+`feat/linked-evidence-coverage`, so that branch is kept.
+
+The three other Vercel projects connected to the repository had never built
+successfully and had no environment variables or custom domains. Their Git connections
+were removed (not deleted) so they no longer report failing checks on every commit.

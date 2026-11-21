@@ -1,14 +1,28 @@
-# Project walkthrough
+# Demo walkthrough
 
-Use fictional data and show only checks actually executed. Local account/workspace workflows are available; hosted Vercel and real-team outcomes are not claimed. See `verification.md` for evidence.
+A ten-minute tour using the fictional seeded data. Run the app locally and seed it
+first (see the [README](../README.md#run-it-locally)). Never seed known demo
+credentials into a real deployment; `seed_demo` refuses to run outside debug mode.
 
-1. Register a fictional account, open its verification message from the local mailbox, POST-confirm and sign in. Create a private workspace.
-2. Open a second unrelated workspace or user session and demonstrate tenant denial through direct URLs and APIs. A coordinator is not a global administrator.
-3. In an empty development database only, the optional seeder supplies fictional packages with passed, failed, missing and needs-review findings. Never seed known demo credentials into production.
-4. Open the launch package. Explain why exact dimensions fail and why a subjective logo review still needs an explanation. Follow a finding to its source and retained instruction history.
-5. Upload a replacement or revise a requirement, then read the refreshed report and demonstrate stale-review rejection. Confirm that a ready status does not send the package.
-6. Invite a verified member, show role differences and demonstrate the last-coordinator guard. Keep all test email in the local mailbox or an approved staging sink.
-7. Show the actual test output and the executable encrypted restore/migration rehearsal. Explain why database-only backup is insufficient for original files.
-8. State the remaining external gates: real Vercel build, remote database/bucket policy, SMTP receipt, scheduling, monitoring, off-site restore and capacity. Present only measured pilot results after permission and data collection.
-
-Orca browser screenshots used for local inspection are real rendered screens; they are not fabricated deployment screenshots. The older optional `scripts/capture_screenshots.cjs` is not evidence of a run. Use current signup/workspace paths when adapting capture automation, and keep private mail, tokens, documents, account data and backups out of public screenshots and the repository.
+1. **Worklist.** Sign in as `demo_coordinator`. The dashboard splits packages into
+   "needs attention" and "resolved", with deadlines in Asia/Manila. Summaries are
+   dated snapshots; opening a report re-checks current inputs.
+2. **A failing report.** Open *Launch press kit*. The square image fails because it is
+   1000 × 1000 px, not the required 1080 × 1080. Follow the finding to its requirement
+   and revision history to show which approved instruction it enforces.
+3. **Evidence review.** In the same report, *Publish the partner announcement* has
+   submitted evidence from `demo_alex`. Record a pass with a note. Then, as
+   `demo_alex`, update the evidence: only that obligation returns to "needs review".
+4. **Stale decisions.** As the coordinator, record a pass for *Partner logo placement*,
+   then upload a replacement image: that review no longer applies, while the evidence
+   review from step 3 remains.
+5. **Coverage.** Open *Obligation coverage*. The across-stage acknowledgement stays
+   unresolved because the event-day and post-event packages don't exist yet; the
+   conditional video obligation needs an explained decision rather than disappearing.
+6. **Isolation.** Sign in as `demo_sam` (contributor) and try opening another
+   contributor's package by URL or through `/api/v1/packages/<id>/report/`: both
+   return 404. A coordinator of one workspace has no access to another.
+7. **Ambiguity is never a pass.** *Post-event reach report format* is marked
+   ambiguous; it cannot be approved or reviewed until clarified.
+8. **Operations.** Show the CI run (SQLite and PostgreSQL suites) and explain why a
+   database-only backup cannot restore private original files.

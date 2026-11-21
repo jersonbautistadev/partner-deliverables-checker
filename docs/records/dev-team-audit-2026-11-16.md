@@ -12,13 +12,13 @@ Read all ten installed dev-team skills and `D:\Programming\Skills\dev team\dev-t
 
 **Evidence:** a fresh read-only production database transaction found two accounts, zero verified accounts, two pending mail jobs, zero sent jobs, and a maximum attempt count of zero. No addresses, message bodies, or tokens were retrieved. Public GETs returned `/health/` 200, `/accounts/login/` 200, and `/ready/` 503. The readiness response is generic and alone cannot identify the failing dependency; the old pending queue is sufficient to fail its mail-age check.
 
-**Where:** [verification/signup](../checker/accounts.py), [queue and SMTP dispatcher](../checker/mail.py), [disabled-by-default dispatcher workflow](../.github/workflows/mail-delivery.yml).
+**Where:** [verification/signup](../../checker/accounts.py), [queue and SMTP dispatcher](../../checker/mail.py), [disabled-by-default dispatcher workflow](../../.github/workflows/mail-delivery.yml).
 
 **Impact and next action:** users cannot complete signup, invitations, or recovery without email. Zero attempts distinguish this from a demonstrated spam-folder or rejected-SMTP issue. Earlier setup left SMTP credentials and scheduled dispatch unconfigured. The owner must finish private provider credential setup, then configure sender/SMTP secrets and rehearse delivery to an approved recipient. Verify actual receipt, expiry/replay protection, invitations, reset, retries and queue drainage before enabling scheduled real-user delivery. Do not bypass verification or expose pending tokens as a workaround.
 
 ### A2. Major / security Medium: equivalent username spellings bypass the account throttle
 
-**Where:** [identity construction](../checker/middleware.py:100), [authentication form subclass](../checker/account_forms.py:35).
+**Where:** [identity construction](../../checker/middleware.py#L100), [authentication form subclass](../../checker/account_forms.py#L35).
 
 **Executed reproduction:** with the default ten-per-minute IP limit, five wrong passwords for fictional username `alice` exhausted its account bucket. A subsequent correct ASCII login returned 429. The same password with fullwidth Unicode letters returned 302 and authenticated. Django normalizes that spelling to the same username; middleware hashes its raw case-folded spelling into a different bucket.
 
@@ -28,7 +28,7 @@ Read all ten installed dev-team skills and `D:\Programming\Skills\dev team\dev-t
 
 ### A3. Major: backup tools omit the configured PostgreSQL provider CA
 
-**Where:** [pg_environment](../checker/backup.py:73), [database CA configuration](../config/settings.py:193).
+**Where:** [pg_environment](../../checker/backup.py#L73), [database CA configuration](../../config/settings.py#L193).
 
 **Executed reproduction:** supplied `sslmode=verify-full` and `sslrootcert=/fixture/provider.crt` with a clean environment. The helper forwarded `PGSSLMODE` but no `PGSSLROOTCERT`. Both backup and restore use this helper. The deployed connection uses an explicit provider CA, which earlier provider verification required.
 
@@ -36,7 +36,7 @@ Read all ten installed dev-team skills and `D:\Programming\Skills\dev team\dev-t
 
 ### A4. Major: a storage read outage breaks cached reports with HTTP 500
 
-**Where:** [current_inputs](../checker/services.py:67), [dashboard](../checker/views.py:68), [downloads](../checker/views.py:327).
+**Where:** [current_inputs](../../checker/services.py#L67), [dashboard](../../checker/views.py#L68), [downloads](../../checker/views.py#L327).
 
 **Executed reproduction:** created a synthetic local asset and cached report, then made storage `exists()` raise `OSError`. An authorized report API GET returned 500 rather than a controlled unavailable response. Dashboard/report reads share this path. S3 download existence/signing calls also lack a storage-service exception handler; that branch was reviewed, not separately fault-injected.
 
@@ -44,7 +44,7 @@ Read all ten installed dev-team skills and `D:\Programming\Skills\dev team\dev-t
 
 ### A5. Major: readiness can succeed with mail unconfigured
 
-**Where:** [readiness](../checker/operations.py:16), [production checks](../checker/checks.py).
+**Where:** [readiness](../../checker/operations.py#L16), [production checks](../../checker/checks.py).
 
 **Executed reproduction:** with no SMTP host, a localhost sender, and no old queued jobs, `/ready/` returned 200. Production deployment checks can detect missing SMTP configuration; readiness does not perform that validation. This finding is separate from today's hosted 503.
 
@@ -52,7 +52,7 @@ Read all ten installed dev-team skills and `D:\Programming\Skills\dev team\dev-t
 
 ### A6. Major / performance: dashboard work grows with every package and asset
 
-**Where:** [package_card/dashboard](../checker/views.py:35), [cached report validation](../checker/services.py:88).
+**Where:** [package_card/dashboard](../../checker/views.py#L35), [cached report validation](../../checker/services.py#L88).
 
 **Measured:** ten packages with one asset each and cached reports required **92 SQL statements and 10 storage existence checks** for one dashboard GET. There is no pagination before report generation; cached reports still check every asset's storage availability. This measures request counts, not hosted latency or load capacity.
 
@@ -60,14 +60,14 @@ Read all ten installed dev-team skills and `D:\Programming\Skills\dev team\dev-t
 
 ### A7. Minor: error copy and retry advice disagree with enforcement
 
-- [Upload error](../checker/views.py:309) says 5 MiB, while Vercel defaults to 3 MiB in [settings](../config/settings.py:154). Build copy from the configured limit and preserve useful form errors.
-- [Throttle responses](../checker/middleware.py:115) always promise one minute and `Retry-After: 60`, including the five-per-900-second account bucket. Calculate the remaining blocking window and test with a fixed clock.
+- [Upload error](../../checker/views.py#L309) says 5 MiB, while Vercel defaults to 3 MiB in [settings](../../config/settings.py#L154). Build copy from the configured limit and preserve useful form errors.
+- [Throttle responses](../../checker/middleware.py#L115) always promise one minute and `Retry-After: 60`, including the five-per-900-second account bucket. Calculate the remaining blocking window and test with a fixed clock.
 
 Confirmed by source inspection; no timed 15-minute browser test was performed.
 
 ### A8. Minor: Compose does not forward implicit SMTP TLS mode
 
-[Compose's shared environment](../compose.yaml:33) forwards `EMAIL_USE_TLS` but omits `EMAIL_USE_SSL`, which [settings](../config/settings.py:132) supports. Implicit TLS configuration cannot reach the container through this file. Forward the variable and verify both mutually exclusive modes. Static finding only; Docker is unavailable locally. Vercel configuration is separate.
+[Compose's shared environment](../../compose.yaml#L33) forwards `EMAIL_USE_TLS` but omits `EMAIL_USE_SSL`, which [settings](../../config/settings.py#L132) supports. Implicit TLS configuration cannot reach the container through this file. Forward the variable and verify both mutually exclusive modes. Static finding only; Docker is unavailable locally. Vercel configuration is separate.
 
 ### A9. Minor: historical summaries need a current pointer
 

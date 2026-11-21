@@ -29,8 +29,9 @@ proof of full agreement completion or delivery.
 - `GET /packages/ID/evidence/REQUIREMENT/history/`: authorized, private, paginated
   submission history. No public evidence or unauthenticated URL-fetch endpoint exists.
 - The existing review POST also accepts `not_applicable` for approved, unambiguous
-  optional/conditional evidence obligations only. A review note and current report
-  fingerprint remain required. Contributors cannot record reviews.
+  optional/conditional evidence obligations only. A review note and the finding's
+  current `review_key` (or the current report fingerprint) remain required; a stale key
+  returns 409. Contributors cannot record reviews.
 
 `POST /ops/mail/` is a separate machine endpoint. It requires `Authorization: Bearer OPS_SECRET` with at least 32 random characters, accepts no payload and processes at most five queued messages. It does not use session authentication and is a CSRF exemption. Keep the secret in the scheduler and application secret stores; never in the URL or browser. Its response reports only the delivered count.
 

@@ -11,7 +11,13 @@ from django.utils import timezone
 from PIL import Image
 
 from checker.models import Account, Membership, Package, Partner, Requirement, Workspace
-from checker.services import audit, ensure_report, record_revision, store_asset
+from checker.services import (
+    audit,
+    ensure_report,
+    record_revision,
+    store_asset,
+    submit_evidence,
+)
 
 
 class Command(BaseCommand):
@@ -40,9 +46,9 @@ class Command(BaseCommand):
             dev = Partner.objects.create(workspace=workspace, name="DevLoop Journal", notes="Fictional technology publication.")
             now = timezone.now().replace(second=0, microsecond=0)
 
-            def requirement(partner, title, kind, slot, config, days, stage="pre", ambiguous=False):
+            def requirement(partner, title, kind, slot, config, days, stage="pre", ambiguous=False, **extra):
                 req = Requirement.objects.create(partner=partner, title=title, kind=kind, slot=slot,
-                                                  config=config, stage=stage, ambiguous=ambiguous,
+                                                  config=config, stage=stage, ambiguous=ambiguous, **extra,
                                                   approved=not ambiguous, deadline=now + timedelta(days=days),
                                                   source="FICTIONAL · Demo partnership brief v1 · Publishing instructions")
                 record_revision(req, coord, "Fictional source reviewed for this demonstration." if not ambiguous else "Exact deliverable is unclear; clarification required.")
@@ -60,6 +66,22 @@ class Command(BaseCommand):
             requirement(dev, "Article: 200–400 words", "word_count", "article", {"min": 200, "max": 400}, 7)
             requirement(dev, "Event name in article", "required_phrase", "article", {"phrase": "CS Expo 2026"}, 7)
             requirement(campus, "Post-event reach report format", "manual", "article", {}, 14, stage="post", ambiguous=True)
+            announcement = requirement(
+                campus, "Publish the partner announcement", "evidence", "",
+                {"instructions": "Inspect the published article and confirm the partner credit."}, 3,
+                responsibility="partner",
+            )
+            requirement(
+                campus, "Acknowledge the partner at every stage", "evidence", "",
+                {"instructions": "Inspect acknowledgements in pre-event, event-day and post-event materials."}, 10,
+                stage="all", responsibility="team",
+            )
+            requirement(
+                signal, "Screen the partner's promotional video", "evidence", "",
+                {"instructions": "Confirm the supplied video (at most 3 minutes) was screened."}, 5,
+                stage="event", responsibility="team", applicability="conditional",
+                conditions="Applies only if the partner supplies a video.",
+            )
             p1 = Package.objects.create(partner=campus, stage="pre", title="Launch press kit", owner=alex)
             p2 = Package.objects.create(partner=signal, stage="pre", title="Social announcement", owner=alex)
             p3 = Package.objects.create(partner=dev, stage="pre", title="Developer spotlight", owner=sam)
@@ -73,6 +95,10 @@ class Command(BaseCommand):
             store_asset(p1, alex, "image", SimpleUploadedFile("poster-wrong-size.png", buffer.getvalue()))
             store_asset(p2, alex, "caption", SimpleUploadedFile("caption.txt", b"Discover student-built software at CS Expo 2026. Join the conversation! #CSExpo2026"))
             store_asset(p3, sam, "article", SimpleUploadedFile("spotlight.txt", spotlight.encode()))
+            submit_evidence(
+                p1, announcement, alex, 0, "https://example.test/campus-current/cs-expo-announcement",
+                "Campus Current published the announcement; the partner credit is in the second paragraph.",
+            )
             for p in [p1, p2, p3]:
                 ensure_report(p)
         self.stdout.write(self.style.SUCCESS("Fictional demo created. Users: demo_coordinator, demo_alex, demo_sam. Password: Demo-Only-2026!"))

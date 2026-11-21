@@ -25,7 +25,7 @@ were up. Staging backup remains active at 02:17 Manila.
 
 Previews remain protected and main is unchanged. Two preserved acceptance teams
 consume two of the five pilot workspace slots. See the acceptance record for
-limits, non-executed checks and file-security limitations, and [off-site operations](offsite-backups.md)
+limits, non-executed checks and file-security limitations, and [off-site operations](../offsite-backups.md)
 for scheduling, rotation and recovery. Public access was explicitly approved;
 no paid-plan approval is implied.
 
