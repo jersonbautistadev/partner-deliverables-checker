@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% block title %}{{ title }} | Partner Deliverables Checker{% endblock %}
+{% block title %}{{ title }} | PartnerReady{% endblock %}
 {% block content %}
 {% if package_id %}<a class="back" href="{% url 'package_detail' package_id %}">← Deliverables report</a>{% else %}<a class="back" href="{% url 'dashboard' %}">← Packages</a>{% endif %}
 <div class="page-heading"><div><h1>{{ title }}</h1>{% if intro %}<p class="lede">{{ intro }}</p>{% else %}<p class="lede">Add the details below. Complete the required fields to continue.</p>{% endif %}</div></div>

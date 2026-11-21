@@ -50,14 +50,15 @@ small, .meta, .owner { font-size: .8125rem; line-height: 1.55; }
 .skip { position: absolute; top: -5rem; left: 1rem; z-index: 10; padding: .75rem 1rem; border-radius: var(--radius); background: var(--surface); box-shadow: var(--shadow-md); }
 .skip:focus { top: .5rem; }
 
-/* Header: navy band with brand, account menu and primary navigation. */
+/* Header: rose band with the PartnerReady mark, account menu and primary navigation. */
 .site-header { padding: 0 max(1.25rem, calc((100vw - 1280px) / 2)); background: var(--header-bg); color: var(--header-ink); }
 .site-header :focus-visible { outline-color: #fff; }
 .masthead { display: flex; justify-content: space-between; align-items: center; gap: 1rem; min-height: 72px; }
-.brand { display: inline-flex; flex-direction: column; color: var(--header-ink); font-size: 1.0625rem; font-weight: 700; letter-spacing: -.015em; text-decoration: none; }
+.brand { display: inline-flex; align-items: center; gap: .7rem; color: var(--header-ink); font-size: 1.125rem; font-weight: 800; letter-spacing: -.015em; text-decoration: none; }
+.brand-mark { flex-shrink: 0; width: 34px; height: 40px; }
+.brand-text { display: flex; flex-direction: column; min-width: 0; line-height: 1.2; }
 .brand:hover { color: var(--header-ink); }
-.brand::before { content: ""; width: 1.25rem; height: .25rem; margin-bottom: .45rem; border-radius: 2px; background: var(--header-active); }
-.brand span { display: block; margin-top: .15rem; color: var(--header-muted); font: 500 .75rem/1.5 var(--body); letter-spacing: 0; }
+.brand small { display: block; margin-top: .1rem; color: var(--header-muted); font: 500 .75rem/1.5 var(--body); letter-spacing: 0; }
 .account { display: flex; align-items: center; gap: 1.5rem; font-size: .8125rem; }
 .account small { display: block; font-size: .75rem; }
 .signout, .text-button { min-height: 2.75rem; padding: .4rem 0; border: 0; background: none; color: var(--muted); font-size: .8125rem; text-decoration: underline; text-underline-offset: .2em; }
@@ -218,6 +219,7 @@ input:disabled, select:disabled, textarea:disabled { background: var(--surface-2
 .search-form input, .search-form select { min-width: 0; }
 .search-form button { flex-shrink: 0; }
 .login-wrap { max-width: 420px; margin: 2rem auto 4rem; }
+.login-logo { display: block; width: min(100%, 300px); height: auto; margin: 0 0 1.75rem; }
 .login-panel { margin: 1.5rem 0; padding: 1.5rem; border: 1px solid var(--line); border-radius: var(--radius-lg); box-shadow: var(--shadow-md); }
 .login-panel .button { width: 100%; }
 .site-footer { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: .5rem 1.5rem; max-width: 1280px; margin: 0 auto; padding: 1rem 0; border-top: 1px solid var(--line); color: var(--muted); font-size: .75rem; }
@@ -225,7 +227,7 @@ input:disabled, select:disabled, textarea:disabled { background: var(--surface-2
 @media (max-width: 1320px) { .site-footer { margin-inline: 1.25rem; } }
 @media (max-width: 1000px) { .dashboard-grid, .report-grid { gap: 1.25rem; grid-template-columns: minmax(0, 1fr) 270px; } .package-row { grid-template-columns: minmax(0, 1fr) 120px; gap: .5rem 1rem; } .row-action { grid-column: 1 / -1; justify-content: flex-start; min-height: 32px; } }
 @media (max-width: 760px) { main { padding-top: 1.5rem; } .dashboard-grid, .report-grid, .two-columns { grid-template-columns: 1fr; gap: 1.25rem; } .file-column { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; } .masthead { min-height: 68px; } .brand { font-size: 1rem; } .account { gap: .75rem; } h1 { font-size: 1.625rem; } }
-@media (max-width: 480px) { .site-header { padding-inline: 1rem; } .masthead { align-items: flex-start; padding: .9rem 0 .4rem; } .brand { max-width: 11rem; } .brand span { font-size: .6875rem; } .account { align-items: flex-end; flex-direction: column; gap: 0; text-align: right; } .account>span { max-width: 9rem; overflow-wrap: anywhere; font-size: .75rem; } .signout { min-height: 44px; } nav { gap: 0 1.1rem; } nav a { font-size: .8125rem; } main { padding-inline: 1rem; } h1 { font-size: 1.5rem; } .page-heading { align-items: flex-start; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.25rem; } .summary-strip { grid-template-columns: 1fr 1fr; gap: .5rem; } .summary-strip>div { padding: .7rem .8rem; } .summary-strip dd { font-size: 1.25rem; } .worklist>section, .report-findings>section, .deadlines, .upload-panel, .files-panel, .passed-findings, .partner-panel, .supplement { padding-inline: .9rem; } .package-row { grid-template-columns: minmax(0, 1fr) 96px; } .package-row h3 { font-size: 1rem; } .section-heading>.meta { max-width: 8rem; text-align: right; } .finding-heading { align-items: flex-start; flex-direction: column; gap: .4rem; } .file-column { display: flex; } dl:not(.summary-strip) { grid-template-columns: 1fr; gap: .25rem; } dd { margin-bottom: .75rem; } .site-footer { margin-inline: 1rem; } .form-panel, .login-panel { padding: 1.1rem; } }
+@media (max-width: 480px) { .site-header { padding-inline: 1rem; } .masthead { align-items: flex-start; padding: .9rem 0 .4rem; } .brand { max-width: 11rem; } .brand small { font-size: .6875rem; } .brand-mark { width: 28px; height: 33px; } .account { align-items: flex-end; flex-direction: column; gap: 0; text-align: right; } .account>span { max-width: 9rem; overflow-wrap: anywhere; font-size: .75rem; } .signout { min-height: 44px; } nav { gap: 0 1.1rem; } nav a { font-size: .8125rem; } main { padding-inline: 1rem; } h1 { font-size: 1.5rem; } .page-heading { align-items: flex-start; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.25rem; } .summary-strip { grid-template-columns: 1fr 1fr; gap: .5rem; } .summary-strip>div { padding: .7rem .8rem; } .summary-strip dd { font-size: 1.25rem; } .worklist>section, .report-findings>section, .deadlines, .upload-panel, .files-panel, .passed-findings, .partner-panel, .supplement { padding-inline: .9rem; } .package-row { grid-template-columns: minmax(0, 1fr) 96px; } .package-row h3 { font-size: 1rem; } .section-heading>.meta { max-width: 8rem; text-align: right; } .finding-heading { align-items: flex-start; flex-direction: column; gap: .4rem; } .file-column { display: flex; } dl:not(.summary-strip) { grid-template-columns: 1fr; gap: .25rem; } dd { margin-bottom: .75rem; } .site-footer { margin-inline: 1rem; } .form-panel, .login-panel { padding: 1.1rem; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; animation: none !important; transition: none !important; } }
 
 .scroll-hint { display: none; }
@@ -255,7 +257,7 @@ input:disabled, select:disabled, textarea:disabled { background: var(--surface-2
 .account-menu-items .signout { min-height: 44px; }
 .brand { min-width: 0; overflow-wrap: anywhere; }
 .workspace-row>div { min-width: 0; overflow-wrap: anywhere; }
-.brand span { max-width: 22rem; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.brand small { max-width: 22rem; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .account-name { display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-weight: 600; }
 .policy-page { max-width: 68ch; margin-inline: auto; }
 .policy-page section { margin-top: var(--space-5); padding: var(--space-4) var(--space-5); border: 1px solid var(--line); border-radius: var(--radius-lg); }
@@ -310,3 +312,6 @@ nav a.active { font-weight: 700; }
 /* Keep user data (requirement titles, partner names) in its own case. */
 .coverage-row .section-heading h2, .partner-panel .section-heading h2 { text-transform: none; letter-spacing: -.005em; font-weight: 700; }
 .section-note + .coverage-row { margin-top: 1rem; }
+/* Brand name never breaks mid-word; tighter mark and type on small phones. */
+.brand-text { white-space: nowrap; overflow-wrap: normal; }
+@media (max-width: 480px) { .brand { max-width: none; gap: .5rem; font-size: 1rem; } .brand-mark { width: 26px; height: 31px; } .brand small { max-width: 8.5rem; } .account-menu summary span { max-width: min(9rem, 30vw); } }
