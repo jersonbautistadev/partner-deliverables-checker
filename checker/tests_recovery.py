@@ -60,6 +60,7 @@ class RecoveryTests(SimpleTestCase):
         with patch("checker.backup.connection", fake):
             args = pg_application_tables()
         self.assertEqual(args, ["--strict-names", "--table", '"public"."auth_user"', "--table", '"public"."checker_workspace"', "--table", '"public"."django_migrations"'])
+        fake.introspection.django_table_names.assert_called_once_with(only_existing=True, include_views=False)
 
     def preview_environment(self):
         env = os.environ.copy()

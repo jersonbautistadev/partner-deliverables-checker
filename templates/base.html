@@ -22,6 +22,7 @@
       <a {% if request.resolver_match.url_name == 'partners' or request.resolver_match.url_name == 'partner_new' or request.resolver_match.url_name == 'requirement_new' or request.resolver_match.url_name == 'requirement_detail' or request.resolver_match.url_name == 'requirement_edit' %}class="active" aria-current="{% if request.resolver_match.url_name == 'partners' %}page{% else %}true{% endif %}"{% endif %} href="{% url 'partners' %}">Partners &amp; requirements</a>
       {% if coordinator %}<a {% if request.resolver_match.url_name == 'audit' %}class="active" aria-current="page"{% endif %} href="{% url 'audit' %}">Audit trail</a>{% endif %}
       <a href="{% url 'workspace_settings' %}">Team settings</a>
+      <a {% if request.resolver_match.url_name == 'coverage' %}class="active" aria-current="page"{% endif %} href="{% url 'coverage' %}">Obligation coverage</a>
       {% endif %}
       <a href="{% url 'workspaces' %}">Workspaces</a>
     </nav>

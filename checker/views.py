@@ -16,7 +16,14 @@ from django.utils.http import content_disposition_header
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
 from checker.engine import InvalidUpload
-from checker.forms import AssetForm, PackageForm, PartnerForm, RequirementForm, ReviewForm
+from checker.forms import (
+    AssetForm,
+    EvidenceForm,
+    PackageForm,
+    PartnerForm,
+    RequirementForm,
+    ReviewForm,
+)
 from checker.models import Asset, AuditEvent, Partner, Requirement
 from checker.permissions import require_coordinator, require_member, visible_packages
 from checker.security import LimitExceeded, count_limit, workspace_write
@@ -24,11 +31,14 @@ from checker.storage import StorageUnavailable, file_exists, storage_errors
 from checker.worklist import worklist_cards
 from checker.services import (
     audit,
+    applicable_requirements,
     ensure_report,
+    latest_evidence,
     record_review,
     record_revision,
     remove_asset,
     store_asset,
+    submit_evidence,
 )
 
 
@@ -39,13 +49,13 @@ def package_for(request, pk):
 def package_card(package):
     run = ensure_report(package)
     counts = Counter(f["status"] for f in run.findings)
-    ready = bool(run.findings) and counts["passed"] == len(run.findings)
+    ready = bool(run.findings) and counts["passed"] + counts["not_applicable"] == len(run.findings)
     return {
         "package": package,
         "run": run,
         "counts": counts,
         "ready": ready,
-        "status": "Ready for submission" if ready else "Action needed",
+        "status": "Configured checks resolved" if ready else "Action needed",
     }
 
 
@@ -73,7 +83,8 @@ def dashboard(request):
     packages = visible_packages(request.user, request.workspace)
     requirements = list(
         Requirement.objects.filter(partner__workspace=request.workspace)
-        .select_related("partner").order_by("partner__name", "stage", "id")
+        .select_related("partner")
+        .order_by("partner__name", "stage", "id")
     )
     cards = worklist_cards(packages, requirements)
     action_cards = sorted(
@@ -90,15 +101,23 @@ def dashboard(request):
     deadlines = [r for r in dated if r.deadline >= now]
     overdue = [r for r in dated if r.deadline < now]
     # Contributors can see shared instructions/deadlines, including stages with no package yet.
-    stages = {(c["package"].partner_id, c["package"].stage) for c in cards}
-    missing_stages = []
+    package_stages = {(c["package"].partner_id, c["package"].stage) for c in cards}
+    package_partners = {partner_id for partner_id, _ in package_stages}
+    # No package can use an unconfirmed stage; count those for confirmation instead.
+    unconfirmed_stage_count = sum(r.stage == "unset" for r in requirements)
+    missing_stages, listed = [], set()
     for r in requirements:
         key = (r.partner_id, r.stage)
-        if key not in stages:
-            missing_stages.append(r)
-            stages.add(key)
+        if r.stage == "unset" or key in package_stages or key in listed:
+            continue
+        if r.stage == "all" and r.partner_id in package_partners:
+            continue
+        missing_stages.append(r)
+        listed.add(key)
     action_page = Paginator(action_cards, 20).get_page(request.GET.get("action_page"))
-    ready_page = Paginator([c for c in cards if c["ready"]], 20).get_page(request.GET.get("ready_page"))
+    ready_page = Paginator([c for c in cards if c["ready"]], 20).get_page(
+        request.GET.get("ready_page")
+    )
     return render(
         request,
         "checker/dashboard.html",
@@ -116,6 +135,7 @@ def dashboard(request):
             "deadlines": deadline_groups(deadlines),
             "overdue": deadline_groups(overdue),
             "missing_stages": missing_stages,
+            "unconfirmed_stage_count": unconfirmed_stage_count,
             "now": now,
         },
     )
@@ -253,18 +273,43 @@ def package_new(request):
 def package_detail(request, pk):
     package = package_for(request, pk)
     card = package_card(package)
-    priority = {"failed": 0, "missing": 1, "needs_review": 2, "passed": 3}
+    priority = {"failed": 0, "missing": 1, "needs_review": 2, "passed": 3, "not_applicable": 4}
     findings = sorted(card["run"].findings, key=lambda finding: priority.get(finding["status"], 2))
-    entries = [
-        {
-            "finding": finding,
-            "review_form": ReviewForm(
-                initial={"fingerprint": card["run"].fingerprint},
-                auto_id=f"review_{index}_%s",
-            ),
+    current_evidence = latest_evidence(package)
+    entries = []
+    for index, finding in enumerate(findings):
+        form = ReviewForm(
+            initial={"fingerprint": finding.get("review_key") or card["run"].fingerprint},
+            auto_id=f"review_{index}_%s",
+        )
+        can_exclude = finding["kind"] == "evidence" and finding.get("applicability") in {
+            "optional",
+            "conditional",
         }
-        for index, finding in enumerate(findings)
-    ]
+        if not can_exclude:
+            form.fields["decision"].choices = [("passed", "Pass"), ("failed", "Fail")]
+        finding["can_review"] = (
+            finding["kind"] in {"manual", "evidence"}
+            and finding.get("approved")
+            and not finding.get("ambiguous")
+            and (finding["status"] != "missing" or can_exclude)
+        )
+        evidence = current_evidence.get(finding["requirement_id"])
+        entries.append(
+            {
+                "finding": finding,
+                "review_form": form,
+                "evidence": evidence,
+                "evidence_form": EvidenceForm(
+                    initial={
+                        "version": evidence.pk if evidence else 0,
+                        "url": evidence.url if evidence else "",
+                        "note": evidence.note if evidence else "",
+                    },
+                    auto_id=f"evidence_{index}_%s",
+                ),
+            }
+        )
     return render(
         request,
         "checker/package.html",
@@ -274,10 +319,14 @@ def package_detail(request, pk):
             "upload_form": AssetForm(),
             "review_form": ReviewForm(initial={"fingerprint": card["run"].fingerprint}),
             "action_findings": [
-                entry for entry in entries if entry["finding"]["status"] != "passed"
+                entry
+                for entry in entries
+                if entry["finding"]["status"] not in {"passed", "not_applicable"}
             ],
             "passed_findings": [
-                entry for entry in entries if entry["finding"]["status"] == "passed"
+                entry
+                for entry in entries
+                if entry["finding"]["status"] in {"passed", "not_applicable"}
             ],
         },
     )
@@ -341,7 +390,9 @@ def asset_download(request, pk, asset_id):
             url = asset.file.storage.url(
                 asset.file.name,
                 parameters={
-                    "ResponseContentDisposition": content_disposition_header(True, asset.original_name),
+                    "ResponseContentDisposition": content_disposition_header(
+                        True, asset.original_name
+                    ),
                     "ResponseContentType": "application/octet-stream",
                 },
                 expire=60,
@@ -383,9 +434,7 @@ def asset_download(request, pk, asset_id):
 def manual_review(request, pk, requirement_id):
     require_coordinator(request.user, request.workspace)
     package = package_for(request, pk)
-    requirement = get_object_or_404(
-        Requirement, pk=requirement_id, partner=package.partner, stage=package.stage
-    )
+    requirement = get_object_or_404(applicable_requirements(package), pk=requirement_id)
     form = ReviewForm(request.POST)
     if not form.is_valid():
         return render(
@@ -406,6 +455,7 @@ def manual_review(request, pk, requirement_id):
             form.cleaned_data["fingerprint"],
             form.cleaned_data["decision"] == "passed",
             form.cleaned_data["note"],
+            decision=form.cleaned_data["decision"],
         )
     except ValidationError as exc:
         return render(
@@ -416,6 +466,67 @@ def manual_review(request, pk, requirement_id):
         )
     messages.success(request, "Review recorded for this exact version of the package.")
     return redirect("package_detail", pk=pk)
+
+
+@login_required
+@require_POST
+@workspace_write
+def evidence_submit(request, pk, requirement_id):
+    package = package_for(request, pk)
+    requirement = get_object_or_404(
+        applicable_requirements(package), pk=requirement_id, kind="evidence"
+    )
+    form = EvidenceForm(request.POST)
+    status = 400
+    if form.is_valid():
+        try:
+            submit_evidence(package, requirement, request.user, **form.cleaned_data)
+        except LimitExceeded:
+            form.add_error(
+                None,
+                "Evidence history limit reached. Your previous submission remains current. Contact the operator.",
+            )
+            status = 429
+        except ValidationError as exc:
+            form.add_error(None, exc)
+            if getattr(exc, "code", None) == "stale":
+                status = 409
+        else:
+            messages.success(
+                request,
+                "Evidence saved. Earlier reviews no longer apply; a coordinator must review this version.",
+            )
+            return redirect("package_detail", pk=pk)
+    return render(
+        request,
+        "checker/form.html",
+        {
+            "title": "Evidence not saved",
+            "form": form,
+            "form_action": request.path,
+            "package_id": pk,
+            "stale_evidence": status == 409,
+            "intro": "Correct the details below. Your previous evidence remains in history.",
+        },
+        status=status,
+    )
+
+
+@login_required
+@require_GET
+def evidence_history(request, pk, requirement_id):
+    package = package_for(request, pk)
+    requirement = get_object_or_404(applicable_requirements(package), pk=requirement_id)
+    history = package.evidence.filter(requirement=requirement).select_related("actor")
+    return render(
+        request,
+        "checker/evidence_history.html",
+        {
+            "package": package,
+            "requirement": requirement,
+            "history": Paginator(history, 25).get_page(request.GET.get("page")),
+        },
+    )
 
 
 @login_required

@@ -1,17 +1,21 @@
 """Application writes live here so audit records and changes commit together."""
 
+import hashlib
+import json
 import logging
 from pathlib import Path
 
 from django.core.exceptions import ValidationError
 from django.core.files.base import ContentFile
 from django.db import transaction
+from django.db.models import Q
 
 from checker.engine import ENGINE_VERSION, MAX_FILE_BYTES, evaluate, fingerprint, inspect_upload
 from checker.models import (
     Asset,
     AuditEvent,
     CheckRun,
+    Evidence,
     ManualReview,
     Package,
     RequirementRevision,
@@ -32,7 +36,7 @@ def audit(actor, action, target, workspace=None, **detail):
 
 
 def requirement_snapshot(req):
-    return {
+    snapshot = {
         "id": req.id,
         "partner_id": req.partner_id,
         "stage": req.stage,
@@ -46,6 +50,25 @@ def requirement_snapshot(req):
         "ambiguous": req.ambiguous,
         "revision": req.revision,
     }
+    # Additive metadata must not invalidate unchanged legacy file-review fingerprints.
+    if req.responsibility != "unspecified" or req.applicability != "required" or req.conditions:
+        snapshot.update(
+            responsibility=req.responsibility,
+            applicability=req.applicability,
+            conditions=req.conditions,
+        )
+    return snapshot
+
+
+def applicable_requirements(package):
+    return package.partner.requirements.filter(Q(stage=package.stage) | Q(stage="all"))
+
+
+def latest_evidence(package):
+    current = {}
+    for entry in package.evidence.select_related("actor").order_by("-id"):
+        current.setdefault(entry.requirement_id, entry)
+    return current
 
 
 def record_revision(req, actor, reason):
@@ -67,10 +90,7 @@ def record_revision(req, actor, reason):
 
 
 def current_inputs(package):
-    reqs = [
-        requirement_snapshot(r)
-        for r in package.partner.requirements.filter(stage=package.stage).order_by("id")
-    ]
+    reqs = [requirement_snapshot(r) for r in applicable_requirements(package).order_by("id")]
     assets = [
         {
             "id": a.id,
@@ -82,7 +102,42 @@ def current_inputs(package):
         }
         for a in package.assets.order_by("slot")
     ]
-    return reqs, assets, fingerprint(reqs, assets)
+    rule_ids = {r["id"] for r in reqs if r["kind"] == "evidence"}
+    evidence = [
+        {
+            "id": e.id,
+            "requirement_id": e.requirement_id,
+            "url": e.url,
+            "note": e.note,
+            "actor_id": e.actor_id,
+        }
+        for rid, e in sorted(latest_evidence(package).items())
+        if rid in rule_ids
+    ]
+    return reqs, assets, fingerprint(reqs, assets, evidence=evidence)
+
+
+def evidence_input(entry):
+    if entry is None:
+        return None
+    return {"id": entry.id, "url": entry.url, "note": entry.note, "actor_id": entry.actor_id}
+
+
+def review_key(rule, asset, evidence):
+    """Scope a coordinator decision to one requirement and only the input it inspected.
+
+    Unrelated files, evidence or requirements in the same package must not reset it.
+    """
+    payload = {
+        "scope": "requirement-review-v1",
+        "engine": ENGINE_VERSION,
+        "requirement": rule,
+        "asset": asset,
+        "evidence": evidence,
+    }
+    return hashlib.sha256(
+        json.dumps(payload, sort_keys=True, ensure_ascii=False, separators=(",", ":")).encode()
+    ).hexdigest()
 
 
 @transaction.atomic
@@ -93,24 +148,37 @@ def ensure_report(package, force=False):
     )
     reqs, assets, signature = current_inputs(package)
     latest = package.runs.first()
-    if latest and latest.fingerprint == signature and not force:
+    # Runs saved before per-requirement review keys existed are regenerated once.
+    if (
+        latest
+        and latest.fingerprint == signature
+        and not force
+        and all("review_key" in f for f in latest.findings if f.get("requirement_id"))
+    ):
         return latest
     by_slot = {a["slot"]: a for a in assets if a["available"]}
+    evidence = latest_evidence(package)
     findings = []
     for rule in reqs:
-        finding = evaluate(rule, by_slot.get(rule["slot"]))
+        is_evidence = rule["kind"] == "evidence"
+        current = evidence.get(rule["id"]) if is_evidence else None
+        asset = None if is_evidence else by_slot.get(rule["slot"])
+        key = review_key(rule, asset, evidence_input(current) if is_evidence else None)
+        finding = evaluate(rule, current if is_evidence else asset)
         if (
-            rule["kind"] == "manual"
-            and finding["status"] == "needs_review"
+            rule["kind"] in {"manual", "evidence"}
+            and finding["status"] in {"needs_review", "missing"}
             and rule["approved"]
             and not rule["ambiguous"]
         ):
+            # Legacy reviews stored the whole-package fingerprint; new ones store `key`.
             review = package.reviews.filter(
-                requirement_id=rule["id"], fingerprint=signature
+                requirement_id=rule["id"], fingerprint__in=[signature, key]
             ).first()
-            if review:
+            if review and (finding["status"] != "missing" or review.decision == "not_applicable"):
+                status = review.decision or ("passed" if review.passed else "failed")
                 finding = {
-                    "status": "passed" if review.passed else "failed",
+                    "status": status,
                     "message": f"Manual review by {review.actor.get_username()}: {review.note}",
                 }
         findings.append(
@@ -124,6 +192,10 @@ def ensure_report(package, force=False):
                 "slot": rule["slot"],
                 "approved": rule["approved"],
                 "ambiguous": rule["ambiguous"],
+                "responsibility": rule.get("responsibility", "unspecified"),
+                "applicability": rule.get("applicability", "required"),
+                "conditions": rule.get("conditions", ""),
+                "review_key": key,
             }
         )
     if not reqs:
@@ -218,32 +290,50 @@ def remove_asset(package, actor, asset_id):
 
 
 @transaction.atomic
-def record_review(package, requirement, actor, signature, passed, note):
+def record_review(package, requirement, actor, signature, passed, note, decision=None):
     package = (
         Package.objects.select_for_update(of=("self",)).select_related("partner").get(pk=package.pk)
     )
     run = ensure_report(package)
-    if run.fingerprint != signature:
-        raise ValidationError("Files or requirements changed. Reload the report before reviewing.")
+    finding = next((f for f in run.findings if f.get("requirement_id") == requirement.id), None)
+    current_key = finding.get("review_key") if finding else None
+    # Forms carry the finding's review key; older open forms carry the package fingerprint.
+    if signature not in {run.fingerprint, current_key}:
+        raise ValidationError(
+            "Files, evidence or requirements changed. Reload the report before reviewing."
+        )
+    decision = decision or ("passed" if passed else "failed")
+    if decision not in {"passed", "failed", "not_applicable"}:
+        raise ValidationError("Choose a supported review decision.")
+    passed = decision == "passed"
+    can_exclude = requirement.kind == "evidence" and requirement.applicability in {
+        "optional",
+        "conditional",
+    }
+    if decision == "not_applicable" and not can_exclude:
+        raise ValidationError(
+            "Only optional or conditional evidence obligations may be marked not applicable."
+        )
     eligible = [
         f
         for f in run.findings
         if f["requirement_id"] == requirement.id
-        and f["kind"] == "manual"
+        and f["kind"] in {"manual", "evidence"}
         and f.get("approved")
         and not f.get("ambiguous")
-        and f["status"] != "missing"
+        and (f["status"] != "missing" or (decision == "not_applicable" and can_exclude))
     ]
     if not eligible:
         raise ValidationError(
-            "Only approved manual requirements with an uploaded file can be reviewed."
+            "Approve and clarify the instruction, then supply its file or evidence before reviewing."
         )
     ManualReview.objects.create(
         package=package,
         requirement=requirement,
         actor=actor,
-        fingerprint=signature,
+        fingerprint=current_key or run.fingerprint,
         passed=passed,
+        decision=decision,
         note=note,
     )
     audit(
@@ -253,6 +343,41 @@ def record_review(package, requirement, actor, signature, passed, note):
         workspace=package.partner.workspace,
         requirement_id=requirement.id,
         fingerprint=signature,
+        review_key=current_key,
         passed=passed,
+        decision=decision,
     )
     return ensure_report(package, force=True)
+
+
+@transaction.atomic
+def submit_evidence(package, requirement, actor, version, url, note):
+    Workspace.objects.select_for_update().get(pk=package.partner.workspace_id)
+    package = Package.objects.select_for_update().get(pk=package.pk)
+    if not applicable_requirements(package).filter(pk=requirement.pk, kind="evidence").exists():
+        raise ValidationError("This evidence requirement no longer applies to this package.")
+    current = package.evidence.filter(requirement=requirement).first()
+    if version != (current.pk if current else 0):
+        raise ValidationError(
+            "Evidence changed while you were editing. Reload before saving.", code="stale"
+        )
+    from checker.security import count_limit
+
+    count_limit(
+        Evidence.objects.filter(package__partner__workspace=package.partner.workspace_id),
+        "MAX_EVIDENCE_REVISIONS",
+    )
+    entry = Evidence(package=package, requirement=requirement, actor=actor, url=url, note=note)
+    entry.full_clean()
+    entry.save()
+    package.save(update_fields=["updated_at"])
+    audit(
+        actor,
+        "evidence.submitted",
+        f"package:{package.pk}",
+        workspace=package.partner.workspace,
+        requirement_id=requirement.pk,
+        evidence_id=entry.pk,
+    )
+    ensure_report(package)
+    return entry

@@ -632,7 +632,7 @@ class PublicWorkflowTests(TestCase):
         with patch("django.core.files.storage.FileSystemStorage.exists", side_effect=OSError("outage")) as exists:
             response = self.client.get(reverse("dashboard"))
             self.assertEqual(response.status_code, 200)
-            self.assertContains(response, "Passed last check")
+            self.assertContains(response, "Resolved last report")
             self.assertEqual(response.context["ready_count"], 1)
             exists.assert_not_called()
         self.r1.source = "Updated source"

@@ -143,7 +143,11 @@ backup credentials and private backup-check URL. Production mail dispatch remain
 separately gated. No default-branch edit is required for a manual branch run.
 
 The staged [nightly dispatcher](../deploy/staging-backup-cron.sql) uses the
-already-registered workflow at `fix/dev-team-release-gaps`. Provision a dedicated
+already-registered workflow at `feat/linked-evidence-coverage`. This staging ref
+must contain the evidence models so application-scoped dumps include their tables.
+Keep `STAGING_BACKUP_REF` and the installed staging dispatcher aligned when changing
+the reviewed ref; preserve the branch until both move. Production retains its
+independently configured release ref. Provision a dedicated
 expiring **fine-grained GitHub token**, repository selection limited to this
 repository, **Actions: read/write** only (plus GitHub's required metadata read).
 Keep it in Supabase Vault. Never copy a general Git credential or account-wide

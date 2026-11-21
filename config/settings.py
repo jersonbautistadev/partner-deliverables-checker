@@ -168,6 +168,7 @@ WORKSPACE_STORAGE_BYTES = int(os.environ.get("WORKSPACE_STORAGE_BYTES", str(100 
 MAX_PARTNERS = int(os.environ.get("MAX_PARTNERS", "50"))
 MAX_PACKAGES = int(os.environ.get("MAX_PACKAGES", "200"))
 MAX_REQUIREMENTS = int(os.environ.get("MAX_REQUIREMENTS", "500"))
+MAX_EVIDENCE_REVISIONS = int(os.environ.get("MAX_EVIDENCE_REVISIONS", "2000"))
 MAX_UPLOADS_PER_HOUR = int(os.environ.get("MAX_UPLOADS_PER_HOUR", "60"))
 UPLOAD_MAX_BYTES = int(
     os.environ.get(

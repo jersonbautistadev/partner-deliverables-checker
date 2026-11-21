@@ -95,7 +95,7 @@ def pg_environment():
 
 def pg_application_tables():
     """Back up Django-owned public tables, never provider-managed schemas or tables."""
-    tables = set(connection.introspection.django_table_names(include_views=False))
+    tables = set(connection.introspection.django_table_names(only_existing=True, include_views=False))
     tables.add(MigrationRecorder.Migration._meta.db_table)
     args = ["--strict-names"]
     for table in sorted(tables):

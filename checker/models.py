@@ -1,11 +1,20 @@
 import uuid
 from pathlib import Path
+from urllib.parse import urlsplit
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
 
-STAGES = [("pre", "Pre-event"), ("post", "Post-event")]
+STAGES = [("pre", "Pre-event"), ("event", "Event-day"), ("post", "Post-event")]
+REQUIREMENT_STAGES = STAGES + [("all", "Across stages"), ("unset", "Stage not confirmed")]
+RESPONSIBILITIES = [("unspecified", "Not specified"), ("team", "Our team"), ("partner", "Partner")]
+APPLICABILITY = [
+    ("unspecified", "Not confirmed"),
+    ("required", "Required"),
+    ("optional", "Optional"),
+    ("conditional", "Conditional"),
+]
 SLOTS = [
     ("article", "Article"),
     ("caption", "Caption"),
@@ -18,6 +27,7 @@ KINDS = [
     ("dimensions", "Image dimensions"),
     ("required_phrase", "Required phrase"),
     ("manual", "Manual review"),
+    ("evidence", "Linked evidence / off-site work"),
 ]
 
 ROLES = [("coordinator", "Coordinator"), ("contributor", "Contributor")]
@@ -121,10 +131,15 @@ class Partner(models.Model):
 
 class Requirement(models.Model):
     partner = models.ForeignKey(Partner, on_delete=models.PROTECT, related_name="requirements")
-    stage = models.CharField(max_length=8, choices=STAGES)
+    stage = models.CharField(max_length=8, choices=REQUIREMENT_STAGES)
     title = models.CharField(max_length=160)
     kind = models.CharField(max_length=24, choices=KINDS)
-    slot = models.CharField(max_length=12, choices=SLOTS)
+    slot = models.CharField(max_length=12, choices=SLOTS, blank=True)
+    responsibility = models.CharField(
+        max_length=12, choices=RESPONSIBILITIES, default="unspecified"
+    )
+    applicability = models.CharField(max_length=12, choices=APPLICABILITY, default="required")
+    conditions = models.CharField(max_length=1000, blank=True)
     config = models.JSONField(default=dict)
     source = models.CharField(
         max_length=500, help_text="Document/message title, section, date or URL."
@@ -207,12 +222,50 @@ class ManualReview(models.Model):
     requirement = models.ForeignKey(Requirement, on_delete=models.PROTECT)
     fingerprint = models.CharField(max_length=64)
     passed = models.BooleanField()
+    # Blank preserves the meaning of existing boolean decisions and fingerprints.
+    decision = models.CharField(
+        max_length=16,
+        blank=True,
+        default="",
+        choices=[
+            ("passed", "Pass"),
+            ("failed", "Fail"),
+            ("not_applicable", "Not applicable"),
+        ],
+    )
     note = models.CharField(max_length=1000)
     actor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         ordering = ["-id"]
+
+
+class Evidence(models.Model):
+    """Append-only submissions; the latest row is current, older rows remain inspectable."""
+
+    package = models.ForeignKey(Package, on_delete=models.CASCADE, related_name="evidence")
+    requirement = models.ForeignKey(Requirement, on_delete=models.PROTECT, related_name="evidence")
+    url = models.URLField(max_length=2000, blank=True)
+    note = models.CharField(max_length=2000)
+    actor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-id"]
+        indexes = [models.Index(fields=["package", "requirement", "-id"], name="evidence_latest")]
+
+    def clean(self):
+        super().clean()
+        if self.url:
+            parts = urlsplit(self.url)
+            if parts.scheme != "https" or parts.username or parts.password:
+                raise ValidationError({"url": "Use an HTTPS link without embedded credentials."})
+
+    def save(self, *args, **kwargs):
+        if self.pk:
+            raise ValidationError("Evidence history is append-only.")
+        super().save(*args, **kwargs)
 
 
 class AuditEvent(models.Model):

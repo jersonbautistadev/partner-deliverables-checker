@@ -79,6 +79,8 @@ class ThrottleMiddleware:
             "requirement_edit",
             "requirement_new",
             "manual_review",
+            "evidence_submit",
+            "coverage",
             "asset_remove",
             "package_new",
             "partner_new",

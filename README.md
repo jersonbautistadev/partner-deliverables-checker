@@ -61,11 +61,29 @@ Email is stored in a durable database queue. Run a worker on Compose, or configu
 
 ## Checks and file handling
 
+Requirements can also describe linked evidence or off-site work. Record the responsible
+party (our team, partner, or not specified), required/optional/conditional applicability,
+source and conditions. Pre-event, event-day, post-event and across-stage instructions
+are supported. A stage-not-confirmed draft must be assigned a stage before approval.
+The obligation coverage page lists entered instructions, missing package stages and
+unresolved last-report findings. Compare the inventory with the source agreement;
+the app cannot establish that every source obligation has been entered.
+
+Package owners and coordinators may submit an HTTPS evidence link and explanation.
+Links are never fetched or automatically assessed by the server. A coordinator must
+inspect the evidence and record an explained decision. Optional/conditional evidence
+obligations may be explicitly marked not applicable; they never disappear automatically.
+Evidence submissions are retained in private, paginated history. Every submission
+invalidates earlier package reviews, including when the text is unchanged. Uploading
+or replacing a supporting screenshot also invalidates reviews through the file fingerprint.
+The existing image slots can hold screenshots; PDF/video uploads and automatic follower,
+publication or logo verification are not provided.
+
 - Word bounds are inclusive. Unicode letters/digits are words; internal apostrophes and hyphens remain part of a word. This is project policy, not a promise to match Microsoft Word.
 - Phrase matching uses NFKC normalization, case folding, and collapsed whitespace. Punctuation remains significant.
 - Dimensions are exact natural pixels, independent of EXIF orientation, DPI, crop, or logo placement.
 - Four file slots exist per package: article, caption, promotional image, and logo.
-- Findings are passed, failed, missing, or needs review. Ambiguous or unapproved instructions never pass automatically.
+- Findings are passed, failed, missing, needs review, or an explained not-applicable decision for optional/conditional evidence. Ambiguous or unapproved instructions never pass automatically.
 - Manual decisions apply to an exact input fingerprint. Replacements and changed instructions invalidate old approvals.
 - Upload/removal generates the affected report. Authorized report reads verify current inputs. The dashboard shows dated snapshots and flags changed packages/requirements for a new report; it does not recheck every original file while listing packages.
 - Requirement history is paginated; previous snapshots remain in the database.
@@ -78,6 +96,13 @@ Originals are private attachments. S3 deployments issue authorized signed attach
 ## Initial usage limits
 
 Defaults are configurable through Django environment settings: 3 created workspaces/account; 20 memberships/account; 20 members and 20 pending invitations/workspace; 100 MiB current-file storage/workspace; 50 partners, 200 packages and 500 requirements/workspace; 60 upload operations/hour/workspace. These are guardrails, not measured hosting capacity.
+
+`MAX_EVIDENCE_REVISIONS` defaults to 2,000 retained submissions per workspace, including
+earlier versions. Enforcement is serialized through the workspace row; a rejected
+submission preserves the previous evidence. Request throttling also covers evidence
+submissions and coverage reads. Evidence notes/links remain in the database and its
+encrypted backups; do not paste credentials, expiring private-download links or unnecessary
+personal information into them.
 
 The pilot can additionally cap workspaces across all accounts with
 `MAX_SERVICE_WORKSPACES` and SMTP attempts per UTC day with
