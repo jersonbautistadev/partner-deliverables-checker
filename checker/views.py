@@ -1,11 +1,13 @@
 from collections import Counter
 
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db.models import Q
 from django.core.paginator import Paginator
+from django.template.defaultfilters import filesizeformat
 from botocore.exceptions import BotoCoreError, ClientError
 from django.http import FileResponse, Http404, JsonResponse, HttpResponseRedirect
 from django.shortcuts import get_object_or_404, redirect, render
@@ -18,6 +20,8 @@ from checker.forms import AssetForm, PackageForm, PartnerForm, RequirementForm, 
 from checker.models import Asset, AuditEvent, Partner, Requirement
 from checker.permissions import require_coordinator, require_member, visible_packages
 from checker.security import LimitExceeded, count_limit, workspace_write
+from checker.storage import StorageUnavailable, file_exists, storage_errors
+from checker.worklist import worklist_cards
 from checker.services import (
     audit,
     ensure_report,
@@ -67,47 +71,47 @@ def deadline_groups(queryset):
 @require_GET
 def dashboard(request):
     packages = visible_packages(request.user, request.workspace)
-    cards = [package_card(p) for p in packages]
+    requirements = list(
+        Requirement.objects.filter(partner__workspace=request.workspace)
+        .select_related("partner").order_by("partner__name", "stage", "id")
+    )
+    cards = worklist_cards(packages, requirements)
     action_cards = sorted(
         (card for card in cards if not card["ready"]),
         key=lambda card: (
+            not card["needs_report"],
             -(card["counts"]["failed"] + card["counts"]["missing"]),
             -card["counts"]["needs_review"],
             card["package"].title.casefold(),
         ),
     )
     now = timezone.now()
-    deadlines = (
-        Requirement.objects.filter(partner__workspace=request.workspace, deadline__gte=now)
-        .select_related("partner")
-        .order_by("deadline")
-    )
-    overdue = (
-        Requirement.objects.filter(partner__workspace=request.workspace, deadline__lt=now)
-        .select_related("partner")
-        .order_by("deadline")
-    )
+    dated = sorted((r for r in requirements if r.deadline), key=lambda r: r.deadline)
+    deadlines = [r for r in dated if r.deadline >= now]
+    overdue = [r for r in dated if r.deadline < now]
     # Contributors can see shared instructions/deadlines, including stages with no package yet.
-    stages = {(p.partner_id, p.stage) for p in packages}
+    stages = {(c["package"].partner_id, c["package"].stage) for c in cards}
     missing_stages = []
-    for r in (
-        Requirement.objects.filter(partner__workspace=request.workspace)
-        .select_related("partner")
-        .order_by("partner__name", "stage")
-    ):
+    for r in requirements:
         key = (r.partner_id, r.stage)
-        if key not in stages and key not in {(x.partner_id, x.stage) for x in missing_stages}:
+        if key not in stages:
             missing_stages.append(r)
+            stages.add(key)
+    action_page = Paginator(action_cards, 20).get_page(request.GET.get("action_page"))
+    ready_page = Paginator([c for c in cards if c["ready"]], 20).get_page(request.GET.get("ready_page"))
     return render(
         request,
         "checker/dashboard.html",
         {
             "cards": cards,
-            "action_cards": action_cards,
-            "ready_cards": [card for card in cards if card["ready"]],
+            "action_cards": action_page,
+            "ready_cards": ready_page,
+            "action_page": action_page,
+            "ready_page": ready_page,
             "partner_count": Partner.objects.filter(workspace=request.workspace).count(),
             "incomplete": sum(not c["ready"] for c in cards),
             "review_count": sum(c["counts"]["needs_review"] for c in cards),
+            "needs_report_count": sum(c["needs_report"] for c in cards),
             "ready_count": sum(c["ready"] for c in cards),
             "deadlines": deadline_groups(deadlines),
             "overdue": deadline_groups(overdue),
@@ -293,7 +297,7 @@ def asset_upload(request, pk):
             messages.error(
                 request, " ".join(exc.messages) if isinstance(exc, ValidationError) else str(exc)
             )
-        except (OSError, BotoCoreError, ClientError):
+        except (OSError, BotoCoreError, ClientError, StorageUnavailable):
             return render(
                 request,
                 "checker/error.html",
@@ -306,7 +310,8 @@ def asset_upload(request, pk):
             )
     else:
         messages.error(
-            request, "Choose one supported file and slot. Files over 5 MiB are rejected."
+            request,
+            f"Choose one supported file and slot. The upload limit is {filesizeformat(settings.UPLOAD_MAX_BYTES)}.",
         )
     return redirect("package_detail", pk=pk)
 
@@ -330,16 +335,17 @@ def asset_download(request, pk, asset_id):
     if hasattr(asset.file.storage, "bucket_name"):
         # Short-lived, private bearer URL avoids a function response-size limit.
         # Authorization still happens above, before any URL is generated.
-        if not asset.file.storage.exists(asset.file.name):
+        if not file_exists(asset.file):
             raise Http404("Stored file unavailable. Ask a coordinator to replace it.")
-        url = asset.file.storage.url(
-            asset.file.name,
-            parameters={
-                "ResponseContentDisposition": content_disposition_header(True, asset.original_name),
-                "ResponseContentType": "application/octet-stream",
-            },
-            expire=60,
-        )
+        with storage_errors():
+            url = asset.file.storage.url(
+                asset.file.name,
+                parameters={
+                    "ResponseContentDisposition": content_disposition_header(True, asset.original_name),
+                    "ResponseContentType": "application/octet-stream",
+                },
+                expire=60,
+            )
         audit(
             request.user,
             "asset.downloaded",
@@ -348,12 +354,13 @@ def asset_download(request, pk, asset_id):
             asset_id=asset.id,
         )
         return HttpResponseRedirect(url)
-    try:
-        handle = asset.file.open("rb")
-    except FileNotFoundError as exc:
-        raise Http404(
-            "Stored file unavailable. Ask the coordinator to restore or replace it."
-        ) from exc
+    with storage_errors():
+        try:
+            handle = asset.file.open("rb")
+        except FileNotFoundError as exc:
+            raise Http404(
+                "Stored file unavailable. Ask the coordinator to restore or replace it."
+            ) from exc
     audit(
         request.user,
         "asset.downloaded",

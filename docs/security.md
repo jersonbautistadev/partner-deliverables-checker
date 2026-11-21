@@ -12,6 +12,19 @@ Quotas guard normal authenticated usage and race conditions, not volumetric deni
 
 Retained history is not a tamper-evident ledger. Database administrators and privileged maintenance tools can modify records. Deactivation disables sign-in and removes memberships but retains the account/email, package ownership, snapshots, reviews and audit records. Removing/replacing originals does not retain their previous bytes. Publish the applicable retention and support/contact policy before accepting real documents; the operator must handle identity/deletion requests consistently with that policy. `maintain_data` deletes expired security records after seven days and only deletes old audit events when an explicit retention period of at least 30 days is supplied. Original/revision deletion is not automatic.
 
-Operational controls still need real deployment evidence: remote database and bucket privacy/permissions, verified SMTP delivery, mail retries/alerts, HTTPS and proxy limits, encrypted off-site backups, tested recovery, monitoring notifications and capacity. A short-lived URL, file validator, local test, or passing Django deployment check does not establish all of those properties.
+The [staging record](staging-verification-2026-11-17.md) contains executed hosted
+account/file isolation, SMTP, off-site recovery and alert-receipt evidence.
+Production-specific verification remains separate in the
+[rollout record](production-rollout-2026-11-18.md). A short-lived URL, file
+validator, local test or settings check does not prove a complete deployment.
+
+Optional service-wide workspace and daily SMTP-attempt caps bound a small pilot.
+Their database locks/budgets have PostgreSQL concurrency tests. Email quota
+exhaustion retains messages and triggers readiness/visible delay states; it does
+not imply a delivery deadline or prevent a provider rejecting mail earlier.
+Provider and personal-mail usage also consume the same Gmail account's allowance.
+An initial five-workspace cap at 100 MiB per workspace bounds referenced originals
+to 500 MiB; orphan files, restore copies, database growth and transfer still need
+separate monitoring. Keep restore targets off production's storage budget.
 
 Primary references: [Django deployment checklist](https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/), [Django authentication](https://docs.djangoproject.com/en/5.2/topics/auth/default/), [Vercel Django deployment](https://vercel.com/docs/frameworks/full-stack/django), [Vercel function limits](https://vercel.com/docs/functions/limitations).

@@ -1,3 +1,4 @@
+import math
 import time
 from datetime import timedelta
 from functools import wraps
@@ -9,7 +10,7 @@ from django.db.models import Sum
 from django.utils import timezone
 from django.utils.crypto import salted_hmac
 
-from checker.models import Asset, RateBucket, Workspace
+from checker.models import Asset, RateBucket, ServiceHeartbeat, Workspace
 from checker.permissions import require_member
 
 
@@ -17,9 +18,14 @@ class LimitExceeded(ValidationError):
     pass
 
 
-def consume_limit(identity, limit, seconds):
+def consume_limit_wait(identity, limit, seconds, *, consume=True):
+    """Return zero or seconds until reset; optionally inspect without consuming an attempt."""
     key = salted_hmac("rate-bucket", identity, algorithm="sha256").hexdigest()
-    window = int(time.time()) // seconds
+    now = time.time()
+    window = int(now) // seconds
+    wait = max(1, math.ceil((window + 1) * seconds - now))
+    if not consume:
+        return wait if RateBucket.objects.filter(key=key, window=window, count__gte=limit).exists() else 0
     with transaction.atomic():
         bucket, _ = RateBucket.objects.get_or_create(
             key=key,
@@ -28,10 +34,14 @@ def consume_limit(identity, limit, seconds):
         )
         bucket = RateBucket.objects.select_for_update().get(pk=bucket.pk)
         if bucket.count >= limit:
-            return False
+            return wait
         bucket.count += 1
         bucket.save(update_fields=["count"])
-    return True
+    return 0
+
+
+def consume_limit(identity, limit, seconds):
+    return consume_limit_wait(identity, limit, seconds) == 0
 
 
 def workspace_write(view):
@@ -63,6 +73,22 @@ def count_limit(queryset, setting_name):
         raise LimitExceeded(
             "This workspace has reached its configured usage limit. Contact the operator."
         )
+
+
+def guard_workspace_capacity():
+    """Serialize pilot workspace creation across accounts in the caller's transaction."""
+    limit = settings.MAX_SERVICE_WORKSPACES
+    if not limit:
+        return
+    # This persistent activity row also serializes the count and following insert.
+    # It is distinct from the mail heartbeat and is never pruned as a rate window.
+    ServiceHeartbeat.objects.get_or_create(
+        name="workspace_creation", defaults={"last_seen": timezone.now()}
+    )
+    ServiceHeartbeat.objects.select_for_update().get(name="workspace_creation")
+    if Workspace.objects.count() >= limit:
+        raise LimitExceeded("Pilot workspace capacity has been reached. Contact support before creating another workspace.")
+    ServiceHeartbeat.objects.filter(name="workspace_creation").update(last_seen=timezone.now())
 
 
 def storage_used(workspace):

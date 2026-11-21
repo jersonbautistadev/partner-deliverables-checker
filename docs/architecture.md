@@ -1,5 +1,13 @@
 # Architecture
 
+## Worklist freshness and operational health
+
+The dashboard uses tenant/owner-scoped package queries, a latest-run subquery, and one batch of the latest reports. It does not generate reports or contact original-file storage. It labels summaries as last reports, dates each one, and flags absent reports, engine changes, package edits or later applicable requirement edits as needing a report. Each attention/passed list displays 20 rows per page. Summary classification still reads the latest report metadata for visible packages within the configured workspace limits; this is not a hosted capacity guarantee. Opening a report/API report or changing a package still performs the authoritative fingerprint/storage checks. Out-of-band storage changes are detected there, not silently asserted current by the dashboard.
+
+Storage adapter failures become a dedicated unavailable exception, rendered as generic HTML/JSON 503 responses. A genuinely missing original remains a missing finding or 404. Failed replacement transactions retain the prior asset/report; failures after an HTTP stream has begun cannot retroactively change its status. Private signed-URL downloads are served by the storage provider after authorization.
+
+`ServiceHeartbeat` is global operator state, not workspace content or a user-facing metric. Production readiness requires configured mail, recent dispatcher activity and no stale/exhausted pending jobs, alongside database/storage probes. A completed dispatcher batch records activity even when idle; actual delivery health is also determined by queue state and separately monitored SMTP receipt. No health GET sends email.
+
 Django 5.2 / Python 3.12 serves templates and plain CSS. PostgreSQL is the production database; SQLite is for local development. Vercel runs the WSGI application as a function and serves collected static assets. Remote originals use a private S3-compatible bucket. Compose alternatively runs Gunicorn, a mail worker, PostgreSQL, Nginx, and Caddy on one Linux host.
 
 ## Data boundaries

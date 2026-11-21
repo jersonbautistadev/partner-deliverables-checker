@@ -4,11 +4,12 @@ from django.conf import settings
 from django.contrib.auth import views as auth_views
 from django.urls import include, path
 
-from checker import accounts
+from checker import accounts, public
 from checker.account_forms import VerifiedLoginForm, VerifiedPasswordResetForm
 
 base = urlsplit(settings.PUBLIC_BASE_URL)
 urlpatterns = [
+    path("pilot/", public.pilot_information, name="pilot_information"),
     path("accounts/signup/", accounts.signup, name="signup"),
     path("accounts/verify/", accounts.verification_required, name="verification_required"),
     path("accounts/verify/<str:token>/", accounts.verify_email, name="verify_email"),

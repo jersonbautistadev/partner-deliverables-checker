@@ -91,3 +91,53 @@ class PostgreSQLConcurrencyTests(TransactionTestCase):
             result = list(pool.map(demote, range(2)))
         self.assertEqual(result, [302, 302])
         self.assertEqual(Membership.objects.filter(role="coordinator").count(), 1)
+
+    @override_settings(
+        MAX_SERVICE_WORKSPACES=2,
+        STORAGES={
+            "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+            "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+        },
+    )
+    def test_different_accounts_cannot_exceed_pilot_workspace_capacity(self):
+        barrier = Barrier(2)
+
+        def create(index):
+            try:
+                client = Client()
+                client.force_login(self.users[index])
+                barrier.wait(timeout=10)
+                return client.post(reverse("workspace_create"), {"name": f"New pilot team {index}"}).status_code
+            finally:
+                connections.close_all()
+
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            results = list(pool.map(create, range(2)))
+        self.assertCountEqual(results, [302, 200])
+        self.assertEqual(Workspace.objects.count(), 2)
+        self.assertEqual(Workspace.objects.filter(name__startswith="New pilot team").count(), 1)
+
+    @override_settings(MAIL_DAILY_ATTEMPT_LIMIT=1)
+    def test_two_dispatchers_share_one_daily_mail_budget(self):
+        from unittest.mock import patch
+        from checker.mail import deliver_batch
+        from checker.models import MailJob
+
+        for index in range(2):
+            MailJob.objects.create(recipient=f"fixture{index}@example.test", subject="Fixture", body="Fixture", available_at=timezone.now())
+        barrier = Barrier(2)
+
+        def dispatch(index):
+            try:
+                barrier.wait(timeout=10)
+                return deliver_batch(1)
+            finally:
+                connections.close_all()
+
+        with patch("checker.mail.send_mail", return_value=1) as send:
+            with ThreadPoolExecutor(max_workers=2) as pool:
+                results = list(pool.map(dispatch, range(2)))
+        self.assertCountEqual(results, [1, 0])
+        self.assertEqual(send.call_count, 1)
+        self.assertEqual(MailJob.objects.filter(sent_at__isnull=False).count(), 1)
+        self.assertEqual(MailJob.objects.get(sent_at__isnull=True).attempts, 0)

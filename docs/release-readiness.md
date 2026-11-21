@@ -1,5 +1,36 @@
 # Public release readiness
 
+Current decision: **staging and production acceptance passed; the owner-approved
+bounded educational pilot is public**. [Launch evidence](public-pilot-launch-2026-11-18.md)
+records anonymous account-page, private-data and protected-preview checks.
+The [18 November production acceptance](production-acceptance-2026-11-18.md)
+is the latest evidence, following the [rollout history](production-rollout-2026-11-18.md)
+and [17 November staging acceptance](staging-verification-2026-11-17.md).
+The owner confirmed production verification, reset and invitation email receipt.
+Live reset/sign-in, invitations, two-team roles/isolation, upload/replacement/quota,
+review invalidation, source/history and private-download flows passed. Both
+150-test suites passed hosted CI; SQLite skips nine PostgreSQL-only cases and
+PostgreSQL skips none. The latest build guard validates the actual Vercel build
+environment in addition to CI's production fixture checks.
+
+All five production jobs are active: mail/readiness every two minutes, capacity
+every 15 minutes, backup at 02:47 Manila and approved maintenance at 11:23 Manila.
+Manual maintenance completed without changing protected record counts; its first
+normal daily execution remains in the future. A production file backup restored
+into an isolated managed database/private prefix; both roles downloaded matching
+original bytes. The latest five-original bundle authenticated and its full-set
+restore passed ten matching downloads and ten wrong-workspace denials across
+both roles. All four independent production monitors
+were up. Staging backup remains active at 02:17 Manila.
+
+Previews remain protected and main is unchanged. Two preserved acceptance teams
+consume two of the five pilot workspace slots. See the acceptance record for
+limits, non-executed checks and file-security limitations, and [off-site operations](offsite-backups.md)
+for scheduling, rotation and recovery. Public access was explicitly approved;
+no paid-plan approval is implied.
+
+## Historical 15 November checkpoint
+
 Recorded 15 November 2026. Local implementation and verification are finished for this release candidate. **Vercel build and database/storage health are verified; email/account acceptance is pending and public launch remains blocked.** This is execution evidence, not a security certification.
 
 ## Prioritized gaps and resolution
@@ -16,7 +47,7 @@ Recorded 15 November 2026. Local implementation and verification are finished fo
 
 The editorial frontend was retained. Account/team forms share its typography, restrained accent, explicit labels and responsive layout. The keyboard-operated account menu reduces wrapping. Validation, quota, stale-review and storage failures have specific messages.
 
-## Executed evidence
+## Historical executed evidence: 15 November
 
 - SQLite: **106 tests, OK, three PostgreSQL-only skips**, in a fresh runtime-only installation.
 - PostgreSQL 17.12: **106 tests, OK, no skips**, including row-lock races and actual encrypted PostgreSQL recovery with original downloads.
@@ -25,31 +56,33 @@ The editorial frontend was retained. Account/team forms share its typography, re
 
 Full timings, commands and limitations: [verification](verification.md).
 
-## External blockers and exact actions
+## Operating follow-ups after launch
 
 | Blocker | Impact | Required input/action |
 | --- | --- | --- |
-| Hosted account acceptance | Vercel built/promoted the provider-configured release; HTTPS sign-in, health/readiness and CSS passed. | Complete real email, tenant/account/file workflows and operational acceptance before public launch. |
-| Hosted database workflows | Supabase migrations, separate roles, transaction-pooler reads and verified TLS passed. | Exercise tenant/account workflows through the deployed application and rehearse remote recovery. |
-| Hosted file workflows | Provider write/read/delete, private flag, signed attachment, expiry mechanism and public denial passed. | Verify authenticated upload/download/replacement through the deployed application after account email is available. |
-| SMTP and mail scheduler | Onboarding/recovery cannot reliably deliver messages. | Configure verified sender/SMTP; approve real-recipient testing. Enable a worker/dispatcher and measure receipt/retries/queue age. Included Actions dispatcher is disabled and five-minute scheduling is best effort. |
-| External backup runner/destination | Local restore is not disaster recovery. | Choose an encrypted off-site destination and trusted runner, store the separate encryption key securely, schedule backups and restore into an isolated remote database/bucket. |
-| Monitoring/policy/capacity | Hosted failures and operator response unverified. | Configure alert destination; publish support/retention rules; test readiness/mail/storage/backup alerts, HTTPS and expected concurrency. |
-| Optional Linux/Compose rehearsal | Container/proxy/TLS/backup image unverified. | Use a Docker-capable runner if selecting this alternative. This does not require buying a host for the Vercel target. |
+| Public access | Owner-approved public production routes and protected previews were verified. | Monitor the bounded pilot; retain Django authentication for private data. |
+| Final release checks | Actual production build checks, both full CI runs and five-original recovery passed. | Retain the evidence and repeat affected checks for upgrades. |
+| Pilot capacity | Two acceptance teams consume two of five workspace slots; sustained load is unmeasured. | Keep the finite pilot caps; any fixture removal needs a separately scoped cleanup decision. |
+| Operations | All five production jobs are enabled; manual maintenance passed. | Inspect the first normal daily maintenance run and rotate expiring credentials on the documented dates. |
+| Legacy integrations | Three duplicate Vercel integrations report failure separately from the active project. | Decide whether to disconnect them; no legacy project was deleted during this work. |
+| Optional Linux/Compose target | Compose configuration and three images built in CI; full HTTPS service rehearsal was not run. | Rehearse this alternative if choosing it instead of the verified Vercel target. |
 
-Keep keys/passwords out of chat/source. Free-tier eligibility, quotas, commercial-use rules, costs and availability depend on the chosen services; zero cost is not guaranteed. No paid resources, destructive production writes, real-user emails or public launch were initiated.
+Keep keys/passwords out of chat/source. Free-tier eligibility, quotas, costs and
+availability depend on the chosen services. No paid resources were enabled.
+Public access was opened, and real test emails and the precisely scoped
+production cleanups were executed, only after explicit owner approvals.
 
 ## Assumptions and product boundaries
 
-- Ready means configured checks passed; sending happens outside the app. New workspaces start empty; demo data is development-only.
+- Ready means configured checks passed; sending happens outside the app. New workspaces start empty; the demo seeder is development-only. The preserved production acceptance teams contain explicitly fictional test fixtures.
 - Migrated accounts must verify email. An operator resolves missing/duplicate destinations; old email ownership is not assumed.
 - Migration 0002 is intentionally irreversible. Rollback requires the paired pre-migration backup and matching prior code with traffic closed.
 - Membership removal/deactivation retains ownership/history. Identity corrections, reactivation and retention requests require a trusted operator. No public account-claim or workspace-deletion endpoint is provided.
 - Validation is bounded parsing, not malware scanning. Replacement/removal deletes previous original bytes after commit. Signed URLs are bearer credentials until expiry.
-- S3/SMTP contracts have local/mocked coverage; actual services remain a release gate. SMTP is at least once: an interruption after acceptance can produce duplicates.
-- No complete assistive-technology, hosted load, remote CI, production rollback or security-certification claim is made.
+- S3/SMTP have automated coverage and actual hosted acceptance evidence. SMTP is at least once: an interruption after provider acceptance can produce duplicates.
+- No complete assistive-technology audit, sustained hosted-load test, destructive in-place production rollback or security certification is claimed. Actual hosted CI and isolated recovery results are linked above.
 
-Proceed to protected staging configuration after choosing the services. Approve public access only after the hosted acceptance and off-site recovery exercises in [deployment](deployment.md) pass.
+The public pilot opened after the final [production acceptance](production-acceptance-2026-11-18.md) decision and explicit owner approval. Reassess capacity and deployment requirements before expanding beyond this educational pilot.
 
 ## Changed-file manifest
 

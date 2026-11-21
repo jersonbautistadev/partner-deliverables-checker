@@ -45,6 +45,14 @@ from django.utils import timezone
 from django.core.files.uploadedfile import SimpleUploadedFile
 from checker.models import Account,Membership,Workspace,Partner,Package,Requirement
 from checker.services import store_asset,ensure_report
+from django.db import connection
+if connection.vendor == 'postgresql':
+    with connection.cursor() as cur:
+        cur.execute('CREATE SCHEMA provider_fixture')
+        cur.execute('CREATE TABLE provider_fixture.settings (value text)')
+        cur.execute("INSERT INTO provider_fixture.settings VALUES ('source provider data')")
+        cur.execute('CREATE TABLE public.provider_sentinel (value text)')
+        cur.execute("INSERT INTO public.provider_sentinel VALUES ('source public data')")
 users=[]
 for name in ['recovery_coord','recovery_owner','recovery_other']:
     user=get_user_model().objects.create_user(name,password='Rehearsal-Password-829!')
@@ -66,7 +74,7 @@ assert ensure_report(k).findings[0]['status']=='passed'
                 sys.executable,
                 "manage.py",
                 "backup_bundle",
-                "--traffic-paused",
+                "--lock-assets" if postgres else "--traffic-paused",
                 "--directory",
                 str(root / "bundles"),
             ],
@@ -90,7 +98,21 @@ import django,os
 django.setup()
 from django.core.management import call_command
 call_command('migrate',verbosity=0)
+from django.db import connection
+if connection.vendor == 'postgresql':
+    with connection.cursor() as cur:
+        cur.execute('CREATE SCHEMA provider_fixture')
+        cur.execute('CREATE TABLE provider_fixture.settings (value text)')
+        cur.execute("INSERT INTO provider_fixture.settings VALUES ('retained target provider data')")
+        cur.execute('CREATE TABLE public.provider_sentinel (value text)')
+        cur.execute("INSERT INTO public.provider_sentinel VALUES ('retained target public data')")
 call_command('restore_bundle',os.environ['REHEARSAL_BUNDLE'],confirm_empty=True)
+if connection.vendor == 'postgresql':
+    with connection.cursor() as cur:
+        cur.execute('SELECT value FROM provider_fixture.settings')
+        assert cur.fetchone()[0]=='retained target provider data'
+        cur.execute('SELECT value FROM public.provider_sentinel')
+        assert cur.fetchone()[0]=='retained target public data'
 from django.contrib.auth import get_user_model
 from django.test import Client,override_settings
 from checker.models import Asset,Package

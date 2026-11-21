@@ -1,6 +1,7 @@
 import logging
 
 import os
+import unicodedata
 
 from django.conf import settings
 from django.db import DatabaseError
@@ -9,7 +10,8 @@ from django.shortcuts import redirect
 
 from checker.models import Membership
 from checker.permissions import is_verified
-from checker.security import consume_limit
+from checker.security import consume_limit_wait
+from checker.storage import StorageUnavailable
 
 logger = logging.getLogger(__name__)
 
@@ -91,28 +93,36 @@ class ThrottleMiddleware:
         elif settings.TRUST_PROXY_HEADERS:
             ip = request.META.get("HTTP_X_CLIENT_IP", ip)
         try:
-            allowed = consume_limit(
+            retry_after = consume_limit_wait(
                 f"ip:{ip}:{'account' if name in guarded else 'work'}",
                 settings.AUTH_RATE_LIMIT if name in guarded else settings.WORK_RATE_LIMIT,
                 60,
             )
-            if allowed and name in guarded and request.method == "POST":
-                identities = {
-                    request.POST.get(field, "").strip().casefold()
-                    for field in ("username", "email")
-                }
+            if name in guarded and request.method == "POST":
+                consume_identity = not retry_after
+                identities = set()
+                for field in ("username", "email"):
+                    value = request.POST.get(field, "").strip()
+                    # Overlong fields cannot authenticate. Bound Unicode normalization work.
+                    if len(value) > 320:
+                        continue
+                    if field == "username":
+                        value = unicodedata.normalize("NFKC", value)
+                    identities.add(value.casefold())
                 for identity in identities - {""}:
-                    if not consume_limit(f"account:{identity}", 5, 900):
-                        allowed = False
-            if allowed and request.user.is_authenticated and name in expensive:
-                allowed = consume_limit(
+                    retry_after = max(
+                        retry_after, consume_limit_wait(f"account:{identity}", 5, 900, consume=consume_identity)
+                    )
+            if not retry_after and request.user.is_authenticated and name in expensive:
+                retry_after = consume_limit_wait(
                     f"user:{request.user.pk}:work", settings.WORK_RATE_LIMIT, 60
                 )
-            if not allowed:
+            if retry_after:
+                detail = f"Too many requests. Try again in {retry_after} seconds."
                 response = JsonResponse(
-                    {"error": "Too many requests. Try again in one minute."}, status=429
+                    {"error": detail}, status=429
                 )
-                response["Retry-After"] = "60"
+                response["Retry-After"] = str(retry_after)
                 if not request.path.startswith("/api/"):
                     from django.shortcuts import render
 
@@ -121,11 +131,11 @@ class ThrottleMiddleware:
                         "checker/error.html",
                         {
                             "title": "Please wait",
-                            "detail": "Too many requests. Try again in one minute.",
+                            "detail": detail,
                         },
                         status=429,
                     )
-                    response["Retry-After"] = "60"
+                    response["Retry-After"] = str(retry_after)
                 return response
         except DatabaseError:
             return JsonResponse({"error": "Service temporarily unavailable."}, status=503)
@@ -134,6 +144,19 @@ class ThrottleMiddleware:
 class PrivateResponsesMiddleware:
     def __init__(self, get_response):
         self.get_response = get_response
+
+    def process_exception(self, request, exception):
+        if not isinstance(exception, StorageUnavailable):
+            return None
+        detail = "Files could not be checked or opened. Please retry later."
+        if request.path.startswith("/api/"):
+            return JsonResponse({"error": detail}, status=503)
+        from django.shortcuts import render
+
+        return render(
+            request, "checker/error.html",
+            {"title": "File service unavailable", "detail": detail}, status=503,
+        )
 
     def __call__(self, request):
         response = self.get_response(request)

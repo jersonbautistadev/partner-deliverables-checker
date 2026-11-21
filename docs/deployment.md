@@ -1,6 +1,11 @@
 # Deployment runbook
 
-Requested target: **Vercel**, with an optional Linux Compose alternative. Supabase-backed staging configuration has begun; see the current verification record for hosted build results. See `release-readiness.md` for actual execution evidence.
+Requested target: **Vercel**, with an optional Linux Compose alternative.
+Supabase-backed staging runs the verified [two-minute mail scheduler](staging-mail-scheduler.md),
+independent readiness alerts and [nightly private off-site backups](offsite-backups.md).
+This does not enable production mail or public launch. See `release-readiness.md`
+and the [17 November staging record](staging-verification-2026-11-17.md) for
+actual hosted acceptance, recovery and runner evidence.
 
 ## Vercel prerequisites
 
@@ -24,6 +29,7 @@ Official references: [Django on Vercel](https://vercel.com/docs/frameworks/full-
 - Keep Vercel `UPLOAD_MAX_BYTES` at most 3145728 (3 MiB), below the documented 4.5 MB function request cap including multipart overhead. Browser help and server checks share this limit. Private downloads use authorized 60-second signed attachment URLs rather than routing large response bodies through the function.
 - `.vercelignore` excludes databases, private files, test mail, fixtures, recovery artifacts and runtime downloads. Check the actual deployment artifact before launch. Do not deploy `.env` files or backups.
 - Preview environments must have their own database, bucket/prefix, origin, secrets and safe email destinations. Never let a preview migration or test write to production.
+- In a Vercel Preview deployment, unset origin settings default to the exact validated `VERCEL_BRANCH_URL`/`VERCEL_URL` system hostnames and HTTPS origins. The branch hostname becomes the default account-link origin. Enable system environment variables; missing/invalid platform hostnames fail startup. Explicit `DJANGO_ALLOWED_HOSTS`, `CSRF_TRUSTED_ORIGINS`, and `PUBLIC_BASE_URL` still take precedence. Production origin behavior is unchanged. Do not use a wildcard `.vercel.app` allowlist.
 
 Do not run migrations at WSGI import or on every request. With traffic closed, use a trusted runner with the intended environment injected:
 
@@ -68,7 +74,9 @@ Schedule `sh deploy/backup.sh` from the repository on the host. It stops app/mai
 
 ## Monitoring and release decisions
 
-`/health/` is process liveness. `/ready/` checks database access, storage reachability and pending mail older than fifteen minutes, returning only ready/unavailable. Storage reachability is not a proof of bucket privacy, write permission or available quota. Monitor provider database connections, object storage/volume usage, CPU/latency, email failures, queue age and backup age separately.
+`/health/` is process liveness. `/ready/` checks database access, storage reachability, and pending/exhausted mail. With `DJANGO_DEBUG=0` it also requires valid SMTP configuration and a recent mail-dispatcher heartbeat, even when the queue is empty. `MAIL_HEALTH_MAX_AGE_SECONDS` defaults to 900 (minimum 60); it bounds dispatcher inactivity and the oldest pending job. Public responses expose only ready/unavailable; server logs identify a fixed dependency category without provider exception text. Storage reachability does not prove bucket privacy, write permission or available quota. Monitor provider database connections, object storage/volume usage, CPU/latency, email failures, queue age and backup age separately.
+
+Before starting this revision, apply migration `0004_service_heartbeat` using the migration role. It adds only an operational heartbeat table; it does not rewrite accounts, workspaces, originals or historical reports. Start the configured worker or invoke the protected dispatcher after an approved email rehearsal. A new deployment remains unready until the dispatcher runs; do not bypass this check to work around missing mail credentials. A heartbeat proves dispatcher activity, not SMTP receipt. Test actual delivery separately. Use isolated preview database/storage/email settings when deploying a feature branch.
 
 A missing/failed mail scheduler blocks public onboarding. Five-message batches may be insufficient during bursts; measure and provision a suitable scheduler rather than assuming free capacity. Hosted deployment, email, storage policy, backup destination and alert delivery remain external launch gates until configured and rehearsed.
 

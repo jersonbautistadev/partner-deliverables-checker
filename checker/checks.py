@@ -1,8 +1,25 @@
 import os
+from email.utils import parseaddr
 from urllib.parse import urlsplit
 
 from django.conf import settings
 from django.core.checks import Error, register
+from django.core.exceptions import ValidationError
+from django.core.validators import validate_email
+
+
+def mail_configured():
+    sender = parseaddr(settings.DEFAULT_FROM_EMAIL)[1]
+    try:
+        validate_email(sender)
+    except ValidationError:
+        return False
+    return bool(
+        settings.EMAIL_HOST
+        and "localhost" not in sender.casefold()
+        and settings.DELIVERY_EMAIL_BACKEND == "django.core.mail.backends.smtp.EmailBackend"
+        and settings.EMAIL_USE_TLS != settings.EMAIL_USE_SSL
+    )
 
 
 @register(deploy=True)
@@ -27,7 +44,7 @@ def release_checks(app_configs, **kwargs):
         2,
     )
     need(
-        bool(settings.EMAIL_HOST) and "localhost" not in settings.DEFAULT_FROM_EMAIL,
+        mail_configured(),
         "Configure production SMTP and an authenticated sender.",
         3,
     )
@@ -53,4 +70,8 @@ def release_checks(app_configs, **kwargs):
     need(
         not settings.SECRET_KEY.startswith("replace-"), "Replace placeholder production secrets.", 7
     )
+    try:
+        validate_email(settings.PUBLIC_SUPPORT_EMAIL)
+    except ValidationError:
+        need(False, "Set a valid PUBLIC_SUPPORT_EMAIL for support and retention requests.", 10)
     return issues
