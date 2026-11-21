@@ -10,6 +10,11 @@ Its provider configuration and credentials are deliberately separate from produc
 straight away, so a merged pull request is a release. Merge stacked branches in one
 step; merging them one at a time deploys each intermediate commit.
 
+After each merge, the "Keep staging on the latest release" workflow fast-forwards the
+`staging` branch to `main`. Its Vercel Preview uses the staging database and storage,
+and the staging scheduler (mail, readiness, nightly backup) targets that branch.
+Apply a release's migration to staging as well; staging code updates on merge.
+
 ### Releasing a change that includes a migration
 
 Production code goes live on merge, but migrations are applied by an operator. Keep
