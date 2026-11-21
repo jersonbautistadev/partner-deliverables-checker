@@ -1,0 +1,8 @@
+version: 2
+updates:
+  # Python dependencies are hash-locked (requirements.lock, copied to requirements.txt);
+  # they are audited weekly by CI and by GitHub Dependabot alerts rather than auto-PRs.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly

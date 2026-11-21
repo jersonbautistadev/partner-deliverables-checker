@@ -28,3 +28,17 @@ to 500 MiB; orphan files, restore copies, database growth and transfer still nee
 separate monitoring. Keep restore targets off production's storage budget.
 
 Primary references: [Django deployment checklist](https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/), [Django authentication](https://docs.djangoproject.com/en/5.2/topics/auth/default/), [Vercel Django deployment](https://vercel.com/docs/frameworks/full-stack/django), [Vercel function limits](https://vercel.com/docs/functions/limitations).
+
+## Browser and sign-in protections
+
+Every response carries a strict Content-Security-Policy (`script-src 'none'`, no
+plugins, same-origin styles, fonts, images and form targets, no framing or `<base>`)
+and a Permissions-Policy that disables camera, microphone, geolocation, payment and
+USB. The templates contain no scripts, inline styles or event handlers; keep it that
+way or the policy will block them.
+
+Failed sign-ins are limited per username and source IP (5 per 15 minutes), so
+failures from one network cannot lock the account for everyone, and per username
+across all sources (`ACCOUNT_RATE_LIMIT`, default 50 per 15 minutes) to stop
+distributed guessing. Per-IP request limits apply as before.
+

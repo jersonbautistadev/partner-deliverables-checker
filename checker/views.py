@@ -334,8 +334,9 @@ def package_detail(request, pk):
 
 @login_required
 @require_POST
-@workspace_write
 def asset_upload(request, pk):
+    # No @workspace_write: store_asset writes the file to storage first, then takes a short
+    # workspace lock and re-checks access and quotas, so a slow upload blocks no one else.
     package = package_for(request, pk)
     form = AssetForm(request.POST, request.FILES)
     if form.is_valid():

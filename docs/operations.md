@@ -3,6 +3,31 @@
 The protected Supabase staging deployment uses a [two-minute mail scheduler](staging-mail-scheduler.md).
 Its provider configuration and credentials are deliberately separate from production and application backup bundles.
 
+## Releasing changes
+
+`main` is protected: changes land through a pull request whose `test` and
+`migration-gate` checks pass. Vercel deploys every commit on `main` to production
+straight away, so a merged pull request is a release. Merge stacked branches in one
+step; merging them one at a time deploys each intermediate commit.
+
+### Releasing a change that includes a migration
+
+Production code goes live on merge, but migrations are applied by an operator. Keep
+each migration backward compatible with the code currently in production (expand
+first: add nullable columns or columns with database defaults, add tables; drop or
+tighten only in a later release). Then:
+
+1. Take and verify an encrypted production backup (see below).
+2. Apply the migration with the migration role from the pull request's branch.
+3. Verify runtime grants on any new table (`pdc_web` needs SELECT/INSERT/UPDATE/DELETE).
+4. Add the `migration-applied` label to the pull request; `migration-gate` then passes.
+5. Merge, wait for the production deployment, and run the smoke checks.
+
+The gate is a reminder enforced by CI, not proof: it checks the label, not the
+database. If a migration cannot be made backward compatible, use an explicit
+production-target deployment without the public domain, migrate, smoke-test, and
+promote (as recorded in the 21 November evidence rollout).
+
 ## Legacy single-team migration
 
 Take a database **and originals** backup and pause traffic before `migrate`. Migration 0002 creates a legacy workspace if legacy accounts/data exist, assigns existing partners and audit events, and converts Coordinator/Contributor groups into memberships. Superusers receive a coordinator membership in that legacy workspace only. Users without a team role remain without membership. Existing package IDs, paths, revisions, snapshots, fingerprints and review decisions are not rewritten.
@@ -132,6 +157,11 @@ python scripts/rehearse_pg_recovery.py
 The PostgreSQL exercise requires permission to create temporary databases and removes only its own randomly named rehearsal databases. Both exercises restore original downloads and check permitted roles and cross-workspace denial. They are not evidence of a remote provider/off-site recovery until repeated there.
 
 ## Maintenance and monitoring
+
+Daily maintenance also prunes superseded reports: each package keeps its latest 10
+check runs, and older runs past 30 days are deleted. Reports are reproducible
+snapshots; reviews store their own keys and are never pruned.
+
 
 Run `python manage.py maintain_data` daily (or configure the protected `POST /ops/maintenance/` scheduler) to remove expired rate buckets and security/mail records older than seven days. It keeps original files, revisions, reports and audit history by default. An explicit `--audit-retention-days N` of at least 30 enables audit-event retention; choose and publish that policy first.
 
