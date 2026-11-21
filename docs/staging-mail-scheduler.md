@@ -1,7 +1,8 @@
 # Staging mail scheduler
 
 The dedicated Supabase staging project runs `pdc-staging-mail` every two minutes.
-It POSTs to the protected Vercel **branch alias**, using the existing `/ops/mail/`
+It POSTs to the protected Vercel **branch alias** of the `staging` branch
+(`partner-deliverables-checker-puux-git-staging-jello3.vercel.app`), which tracks `main`, using the existing `/ops/mail/`
 endpoint. Each invocation handles at most five eligible messages and records the
 application's mail heartbeat. No local laptop process is required. This is best
 effort: provider outages, free-tier pauses, expired credentials or a growing queue

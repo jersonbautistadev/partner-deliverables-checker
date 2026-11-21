@@ -143,10 +143,10 @@ backup credentials and private backup-check URL. Production mail dispatch remain
 separately gated. No default-branch edit is required for a manual branch run.
 
 The staged [nightly dispatcher](../deploy/staging-backup-cron.sql) uses the
-already-registered workflow at `feat/linked-evidence-coverage`. This staging ref
-must contain the evidence models so application-scoped dumps include their tables.
-Keep `STAGING_BACKUP_REF` and the installed staging dispatcher aligned when changing
-the reviewed ref; preserve the branch until both move. Production is configured
+already-registered workflow at the `staging` branch, which the "Keep staging on the
+latest release" workflow fast-forwards to `main` after every merge, so staging
+backups always run the released backup code. Keep `STAGING_BACKUP_REF` and the
+installed staging dispatcher aligned if the ref ever changes. Production is configured
 independently: since 21 November 2026 its `PRODUCTION_BACKUP_REF` and Vault
 `pdc_production_backup_ref` are both `main`. Provision a dedicated
 expiring **fine-grained GitHub token**, repository selection limited to this

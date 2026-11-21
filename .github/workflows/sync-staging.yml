@@ -1,0 +1,21 @@
+name: Keep staging on the latest release
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: write
+concurrency:
+  group: sync-staging
+  cancel-in-progress: false
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      # Fast-forward only: if staging was changed directly, this fails loudly instead
+      # of discarding that work. Each push creates a staging Preview on Vercel, which
+      # uses the staging database and storage (Preview environment variables).
+      - name: Fast-forward staging to main
+        run: git push origin "${GITHUB_SHA}:refs/heads/staging"
