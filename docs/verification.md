@@ -1,5 +1,26 @@
 # Verification record
 
+## 21 November 2026 evidence-text wrapping fix (not yet promoted)
+
+Long plaintext URLs in evidence explanations could extend past a phone viewport,
+even though the separate evidence links already wrapped. Added inherited
+`overflow-wrap: anywhere` to the evidence summary and retained-history containers.
+The change preserves the text, link destinations and review behavior.
+
+Orca reproduced this in actual report/history views and tested the proposed rule
+as a temporary browser style at 320, 390, 768 and 1100 CSS pixels. At 390 pixels,
+the report's document width changed from 578 to 375 and history from 564 to 375
+(the desktop browser reserved 15 pixels for its scrollbar). All eight corrected
+width probes stayed within the viewport. A touch-mode phone screenshot was also
+inspected for each view. This temporary render check did not replace production
+assets. Python 3.12.16 Ruff, Django system checks and static collection passed.
+
+For a repeatable manual regression, submit a fictional long HTTPS path as plain
+text in an evidence explanation, then inspect both its report and retained history
+at phone width. Check that all text remains readable without horizontal scrolling;
+do not hide overflowing text. No full accessibility-conformance claim is made.
+Public deployment of this follow-up requires the owner's separate approval.
+
 ## 20 November 2026 evidence-workflow candidate
 
 Branch `feat/linked-evidence-coverage` adds private linked/off-site evidence,
