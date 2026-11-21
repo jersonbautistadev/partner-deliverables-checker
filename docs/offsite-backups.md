@@ -2,7 +2,7 @@
 
 This covers operator configuration, separate from public launch approval.
 Staging acceptance and the current production checkpoint are distinguished in
-[the rollout record](production-rollout-2026-11-18.md). Never apply a staging-only
+[the rollout record](records/production-rollout-2026-11-18.md). Never apply a staging-only
 scheduler SQL file or its source credentials to production.
 The web function does not receive backup credentials or the encryption key.
 
@@ -39,7 +39,7 @@ All five production jobs are active after the owner's separate retention
 approval. Actual mail/readiness cron succeeded from 12:08 UTC on 18 November;
 the actual maintenance endpoint and independent monitor passed at 12:30 UTC.
 Its first normal daily cron execution is still in the future. Do not infer state
-from the paused-by-default SQL file. See [production acceptance](production-acceptance-2026-11-18.md)
+from the paused-by-default SQL file. See [production acceptance](records/production-acceptance-2026-11-18.md)
 for live file/backup/recovery results and current limits.
 The app's Production-only `OPS_SECRET` and Vault's `pdc_production_ops_secret`
 must hold the same credential. On rotation, pause affected jobs, update both,
@@ -146,8 +146,9 @@ The staged [nightly dispatcher](../deploy/staging-backup-cron.sql) uses the
 already-registered workflow at `feat/linked-evidence-coverage`. This staging ref
 must contain the evidence models so application-scoped dumps include their tables.
 Keep `STAGING_BACKUP_REF` and the installed staging dispatcher aligned when changing
-the reviewed ref; preserve the branch until both move. Production retains its
-independently configured release ref. Provision a dedicated
+the reviewed ref; preserve the branch until both move. Production is configured
+independently: since 21 November 2026 its `PRODUCTION_BACKUP_REF` and Vault
+`pdc_production_backup_ref` are both `main`. Provision a dedicated
 expiring **fine-grained GitHub token**, repository selection limited to this
 repository, **Actions: read/write** only (plus GitHub's required metadata read).
 Keep it in Supabase Vault. Never copy a general Git credential or account-wide
@@ -197,5 +198,5 @@ configuration is deliberately absent from application backup bundles and must be
 reprovisioned separately. Review outstanding sessions, links and mail queue state.
 
 Executed results and remaining operational gates are recorded in the
-[17 November evidence](staging-verification-2026-11-17.md). Configuration files
+[17 November evidence](records/staging-verification-2026-11-17.md). Configuration files
 alone do not prove scheduling, receipt or restoration.

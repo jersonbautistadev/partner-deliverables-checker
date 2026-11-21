@@ -17,7 +17,7 @@ Branch: `fix/dev-team-release-gaps`; production `main` remains separate. This re
 
 ## Managed backup and recovery
 
-The initial full-database dump failed because the least-privilege migration role cannot lock Supabase's `auth` tables. Reproduced the permission error without broadening role permissions. Changed backups to explicitly include Django-managed public tables, automatic many-to-many tables and migration history, excluding provider schemas/unrelated tables. `--strict-names` prevents silently missing required tables. Legacy whole-database PostgreSQL bundles are rejected by current restore; recovery implications are in [operations](operations.md).
+The initial full-database dump failed because the least-privilege migration role cannot lock Supabase's `auth` tables. Reproduced the permission error without broadening role permissions. Changed backups to explicitly include Django-managed public tables, automatic many-to-many tables and migration history, excluding provider schemas/unrelated tables. `--strict-names` prevents silently missing required tables. Legacy whole-database PostgreSQL bundles are rejected by current restore; recovery implications are in [operations](../operations.md).
 
 Created a real AES-256-GCM encrypted bundle from the staging managed database and referenced private original. Restored it into the separate managed `pdc_recovery` database and fresh `recovery/originals` object prefix. Actual verification passed for original SHA-256, preserved manual-review/report fingerprints, coordinator and owner-contributor private signed downloads, and denial of direct report/API/download IDs to an unrelated workspace.
 
@@ -63,7 +63,7 @@ headers, with certificate/hostname verification and bounded network timeouts.
 No plaintext HTTP request queue is used. The previously temporary Vercel
 automation credential is now retained as the staging scheduler credential;
 revoking it requires stopping/reconfiguring the job. Setup, monitoring and pause
-instructions are in [the scheduler runbook](staging-mail-scheduler.md).
+instructions are in [the scheduler runbook](../staging-mail-scheduler.md).
 
 Initial permission assertions identified Supabase-owned HTTP functions with
 PUBLIC execution grants that `postgres` could not revoke. The job was paused

@@ -20,8 +20,12 @@ resolve an across-stage instruction while any of those stages lacks a visible pa
 Contributors see shared instructions and only their own package report statuses.
 
 `Evidence` is an append-only package+requirement submission history. The latest row
-is included in the package fingerprint, binding decisions to its ID, URL, note and
-submitting actor. File changes remain part of the same fingerprint. Submissions
+is included in the package fingerprint. Each finding also carries a per-requirement
+`review_key`: a SHA-256 of that requirement's snapshot plus only its slot's file or its
+latest evidence (ID, URL, note, submitting actor). New manual reviews store that key,
+so a decision survives unrelated changes in the package but not changes to its own
+requirement or input. Reviews stored with the package fingerprint stay valid while
+the package is unchanged. Submissions
 lock workspace then package, check an optimistic current-evidence ID, enforce the
 workspace history quota, append evidence/audit and refresh the report atomically.
 Failures roll back all database writes. The server never follows supplied URLs.
@@ -33,7 +37,7 @@ explicit outcome, including `not_applicable` only for optional/conditional evide
 The pure file-check engine's existing behavior/version is unchanged; the evidence
 branch and optional fingerprint payload are additive.
 
-`Workspace` -> `Partner` -> `Requirement` / `Package`. Assets and reports belong to packages; revisions belong to requirements. Manual reviews are attached to package+requirement+fingerprint. These records inherit their workspace through their parent relation. `AuditEvent` has an explicit workspace; global account events have no workspace and are excluded from workspace audit pages.
+`Workspace` -> `Partner` -> `Requirement` / `Package`. Assets and reports belong to packages; revisions belong to requirements. Manual reviews are attached to package+requirement and a review key (per-requirement, or a legacy package fingerprint). These records inherit their workspace through their parent relation. `AuditEvent` has an explicit workspace; global account events have no workspace and are excluded from workspace audit pages.
 
 `Account` associates a unique normalized email and verification timestamp with Django's existing User model. `Membership` stores one role per user/workspace. Global groups are historical data only. There is no superuser workspace bypass. `ActionToken` stores only a random token's SHA-256 digest, purpose, bound email/user/workspace, expiry and consumption time. `MailJob` holds delivery data privately until acknowledgement, then clears body and recipient. `RateBucket` uses secret-keyed identity digests and short-lived fixed windows.
 

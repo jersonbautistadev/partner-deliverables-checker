@@ -166,7 +166,7 @@ Recorded 15 November 2026 (Asia/Manila). This replaces the obsolete October reco
 
 Final logs are ignored local artifacts: `.runtime/final-sqlite-tests.log` and `.runtime/final-postgres-tests.log`. Runtime downloads, test mail, databases, fixtures and the local pre-migration SQLite snapshot are excluded from deployment artifacts. Screenshots were inspected from Orca's temporary directory; they are not durable release artifacts.
 
-See [deployment](deployment.md), [operations](operations.md) and [release gates](release-readiness.md). Repeat hosted acceptance and record the deployed revision before public approval.
+See [deployment](../deployment.md), [operations](../operations.md) and [release gates](release-readiness.md). Repeat hosted acceptance and record the deployed revision before public approval.
 
 ## Vercel dependency-discovery correction
 

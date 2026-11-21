@@ -12,10 +12,10 @@ Quotas guard normal authenticated usage and race conditions, not volumetric deni
 
 Retained history is not a tamper-evident ledger. Database administrators and privileged maintenance tools can modify records. Deactivation disables sign-in and removes memberships but retains the account/email, package ownership, snapshots, reviews and audit records. Removing/replacing originals does not retain their previous bytes. Publish the applicable retention and support/contact policy before accepting real documents; the operator must handle identity/deletion requests consistently with that policy. `maintain_data` deletes expired security records after seven days and only deletes old audit events when an explicit retention period of at least 30 days is supplied. Original/revision deletion is not automatic.
 
-The [staging record](staging-verification-2026-11-17.md) contains executed hosted
+The [staging record](records/staging-verification-2026-11-17.md) contains executed hosted
 account/file isolation, SMTP, off-site recovery and alert-receipt evidence.
 Production-specific verification remains separate in the
-[rollout record](production-rollout-2026-11-18.md). A short-lived URL, file
+[rollout record](records/production-rollout-2026-11-18.md). A short-lived URL, file
 validator, local test or settings check does not prove a complete deployment.
 
 Optional service-wide workspace and daily SMTP-attempt caps bound a small pilot.
