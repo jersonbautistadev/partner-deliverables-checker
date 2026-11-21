@@ -206,7 +206,14 @@ class _Structure(HTMLParser):
             self.skip_link = True
 
 
-@override_settings(AUTH_RATE_LIMIT=1000, WORK_RATE_LIMIT=1000)
+@override_settings(
+    STORAGES={
+        "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+        "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+    },
+    AUTH_RATE_LIMIT=1000,
+    WORK_RATE_LIMIT=1000,
+)
 class AccessibilityStructureTests(TestCase):
     """Static HTML checks; they complement, not replace, browser and screen-reader testing."""
 

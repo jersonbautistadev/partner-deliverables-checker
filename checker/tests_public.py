@@ -406,19 +406,21 @@ class PublicWorkflowTests(TestCase):
     def test_auth_throttle_and_csrf(self):
         self.client.logout()
         RateBucket.objects.all().delete()
-        for _ in range(2):
+        # Pin the clock: a real minute boundary between requests would reset the window.
+        with patch("checker.security.time.time", return_value=9001):
+            for _ in range(2):
+                self.assertEqual(
+                    self.client.post(
+                        reverse("login"), {"username": "missing", "password": "bad"}
+                    ).status_code,
+                    200,
+                )
             self.assertEqual(
                 self.client.post(
                     reverse("login"), {"username": "missing", "password": "bad"}
                 ).status_code,
-                200,
+                429,
             )
-        self.assertEqual(
-            self.client.post(
-                reverse("login"), {"username": "missing", "password": "bad"}
-            ).status_code,
-            429,
-        )
         client = Client(enforce_csrf_checks=True)
         self.assertEqual(client.post(reverse("signup"), {}).status_code, 403)
 
