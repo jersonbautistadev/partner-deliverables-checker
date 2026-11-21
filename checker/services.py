@@ -5,7 +5,7 @@ import json
 import logging
 from pathlib import Path
 
-from django.core.exceptions import ValidationError
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.files.base import ContentFile
 from django.db import transaction
 from django.db.models import Q
@@ -22,7 +22,8 @@ from checker.models import (
     Workspace,
 )
 from checker.security import LimitExceeded, consume_limit, storage_used
-from checker.storage import file_exists
+from checker.permissions import visible_packages
+from checker.storage import file_exists, storage_errors
 from django.conf import settings
 
 
@@ -219,33 +220,47 @@ def store_asset(package, actor, slot, upload):
     if len(data) > limit:
         raise LimitExceeded(f"File exceeds the {limit // 1048576} MiB upload limit.")
     inspected = inspect_upload(upload.name, data, slot)
-    stored = None
+    over_quota = "Workspace storage limit reached. Remove unused files or contact the operator."
+
+    def exceeds_quota(workspace):
+        previous_size = (
+            Asset.objects.filter(package_id=package.pk, slot=slot)
+            .values_list("size", flat=True)
+            .first()
+        )
+        return storage_used(workspace) - (previous_size or 0) + len(data) > workspace.storage_limit
+
+    # Cheap unlocked pre-check so an obviously over-quota file never reaches storage.
+    if exceeds_quota(package.partner.workspace):
+        raise LimitExceeded(over_quota)
+    stored = Asset(
+        package=package,
+        slot=slot,
+        original_name=Path(upload.name).name[:255],
+        uploaded_by=actor,
+        **inspected,
+    )
     try:
+        # Write the bytes before taking locks: a slow storage upload must not block
+        # every other write in the workspace. Failures below delete this new object.
+        with storage_errors():
+            stored.file.save(upload.name, ContentFile(data), save=False)
         with transaction.atomic():
             workspace = Workspace.objects.select_for_update().get(pk=package.partner.workspace_id)
+            # Access may have been revoked while the file was uploading.
+            if not visible_packages(actor, workspace).filter(pk=package.pk).exists():
+                raise PermissionDenied("You no longer have access to this package.")
             if not consume_limit(f"upload:{workspace.pk}", settings.MAX_UPLOADS_PER_HOUR, 3600):
                 raise LimitExceeded("Workspace upload limit reached. Try again later.")
             package = Package.objects.select_for_update().get(pk=package.pk)
             previous = Asset.objects.filter(package=package, slot=slot).first()
-            if (
-                storage_used(workspace) - (previous.size if previous else 0) + len(data)
-                > workspace.storage_limit
-            ):
-                raise LimitExceeded(
-                    "Workspace storage limit reached. Remove unused files or contact the operator."
-                )
+            if exceeds_quota(workspace):
+                raise LimitExceeded(over_quota)
             if previous:
                 old_file = previous.file
                 previous.delete()
                 transaction.on_commit(lambda: old_file.delete(save=False), robust=True)
-            stored = Asset(
-                package=package,
-                slot=slot,
-                original_name=Path(upload.name).name[:255],
-                uploaded_by=actor,
-                **inspected,
-            )
-            stored.file.save(upload.name, ContentFile(data), save=False)
+            stored.package = package
             stored.save()
             package.save(update_fields=["updated_at"])
             audit(

@@ -2,6 +2,11 @@ name: Quality and release checks
 on:
   push:
   pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+  # Weekly run so newly published advisories for unchanged dependencies still fail loudly.
+  schedule:
+    - cron: "17 1 * * 1"
+  workflow_dispatch:
 permissions:
   contents: read
 jobs:
@@ -48,8 +53,11 @@ jobs:
             chmod +x ".runtime/$command"
           done
       - name: Full PostgreSQL tests, row-lock races and encrypted restore
-        run: python manage.py test --verbosity 2
+        run: |
+          coverage run --source=checker manage.py test --verbosity 2
+          coverage report -m
         env:
+          COVERAGE_FILE: .coverage.postgresql
           POSTGRES_HOST: localhost
           POSTGRES_PORT: "5432"
           POSTGRES_USER: deliverables
@@ -101,3 +109,28 @@ jobs:
         run: |
           docker compose --profile operations config --quiet
           docker compose --profile operations build app worker backup
+
+  migration-gate:
+    # Merging to main deploys production immediately, but migrations are applied by an
+    # operator. A PR that adds a migration must carry the "migration-applied" label,
+    # added only after the backward-compatible migration has been run in production
+    # (see docs/operations.md, "Releasing a change that includes a migration").
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: New migrations require the production migration to be applied first
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
+        run: |
+          added=$(git diff --name-only --diff-filter=A "$BASE_SHA" "$HEAD_SHA" -- 'checker/migrations/0*.py')
+          if [ -z "$added" ]; then echo "No new migrations."; exit 0; fi
+          echo "New migrations:"; echo "$added"
+          case ",$LABELS," in
+            *,migration-applied,*) echo "Label present: production migration confirmed applied." ;;
+            *) echo "::error::Apply the migration to production first, then add the 'migration-applied' label."; exit 1 ;;
+          esac

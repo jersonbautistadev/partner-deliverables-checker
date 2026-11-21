@@ -34,8 +34,11 @@ class WorkspaceMiddleware:
                 request.workspace = request.membership.workspace
         return self.get_response(request)
 
+    # Workspace content views. Account, operations and public pages handle access themselves.
+    GATED_MODULES = {"checker.views", "checker.coverage"}
+
     def process_view(self, request, view, args, kwargs):
-        if view.__module__ != "checker.views" or view.__name__ in {"health", "readiness"}:
+        if view.__module__ not in self.GATED_MODULES or view.__name__ in {"health", "readiness"}:
             return None
         if not request.user.is_authenticated:
             return None  # Preserve Django's login redirect.
@@ -112,8 +115,19 @@ class ThrottleMiddleware:
                         value = unicodedata.normalize("NFKC", value)
                     identities.add(value.casefold())
                 for identity in identities - {""}:
+                    # Per source: a few failures from one network cannot lock the account for
+                    # everyone. Account-wide: a higher ceiling still stops distributed guessing.
                     retry_after = max(
-                        retry_after, consume_limit_wait(f"account:{identity}", 5, 900, consume=consume_identity)
+                        retry_after,
+                        consume_limit_wait(
+                            f"account:{identity}:ip:{ip}", 5, 900, consume=consume_identity
+                        ),
+                        consume_limit_wait(
+                            f"account:{identity}",
+                            settings.ACCOUNT_RATE_LIMIT,
+                            900,
+                            consume=consume_identity,
+                        ),
                     )
             if not retry_after and request.user.is_authenticated and name in expensive:
                 retry_after = consume_limit_wait(
@@ -163,6 +177,9 @@ class PrivateResponsesMiddleware:
     def __call__(self, request):
         response = self.get_response(request)
         response["Cache-Control"] = "private, no-store"
+        # Templates use no scripts, inline styles or event handlers, so the policy can be strict.
+        response.headers.setdefault("Content-Security-Policy", settings.CONTENT_SECURITY_POLICY)
+        response.headers.setdefault("Permissions-Policy", settings.PERMISSIONS_POLICY)
         if response.status_code >= 500:
             logger.error(
                 "request_failed route=%s status=%s",

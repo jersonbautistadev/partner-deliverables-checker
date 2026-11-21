@@ -13,4 +13,5 @@ supersede earlier ones. For how the system works today, start with the
 | 17 Nov 2026 | [Staging acceptance and operations](staging-verification-2026-11-17.md) |
 | 18 Nov 2026 | [Production rollout](production-rollout-2026-11-18.md), [acceptance](production-acceptance-2026-11-18.md), [public pilot launch](public-pilot-launch-2026-11-18.md) |
 | 21 Nov 2026 | [Linked evidence and coverage rollout](production-evidence-rollout-2026-11-21.md) |
+| 21 Nov 2026 | [Dev-team review and fixes](dev-team-review-2026-11-21.md) |
 | Ongoing | [Verification log](verification.md), [release readiness](release-readiness.md), [milestones](milestones.md) |

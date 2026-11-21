@@ -122,6 +122,12 @@ CSRF_COOKIE_SAMESITE = "Lax"
 SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = "DENY"
 SECURE_REFERRER_POLICY = "same-origin"
+CONTENT_SECURITY_POLICY = (
+    "default-src 'self'; script-src 'none'; style-src 'self'; img-src 'self' data:; "
+    "font-src 'self'; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; "
+    "base-uri 'none'; object-src 'none'"
+)
+PERMISSIONS_POLICY = "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
 if not DEBUG:
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
@@ -158,6 +164,9 @@ INVITATION_HOURS = 48
 SESSION_COOKIE_AGE = 86400
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 AUTH_RATE_LIMIT = int(os.environ.get("AUTH_RATE_LIMIT", "10"))
+# Failed sign-in attempts per username across all sources in 15 minutes. The stricter
+# per-source limit (5) applies first; this ceiling stops distributed guessing.
+ACCOUNT_RATE_LIMIT = int(os.environ.get("ACCOUNT_RATE_LIMIT", "50"))
 WORK_RATE_LIMIT = int(os.environ.get("WORK_RATE_LIMIT", "60"))
 TRUST_PROXY_HEADERS = os.environ.get("TRUST_PROXY_HEADERS", "0") == "1"
 MAX_CREATED_WORKSPACES = int(os.environ.get("MAX_CREATED_WORKSPACES", "3"))
