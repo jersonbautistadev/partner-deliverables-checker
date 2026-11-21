@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% block title %}Partners and requirements | Partner Deliverables Checker{% endblock %}
+{% block title %}Partners and requirements | PartnerReady{% endblock %}
 {% block content %}
 <div class="page-heading"><div><h1>Partners and requirements</h1><p class="lede">Check the current instruction, approval status, deadline, and saved revision history.</p></div>{% if coordinator %}<div class="actions"><a class="button secondary" href="{% url 'partner_new' %}">Add partner</a><a class="button" href="{% url 'requirement_new' %}">Add requirement</a></div>{% endif %}</div>
 {% for p in partners %}

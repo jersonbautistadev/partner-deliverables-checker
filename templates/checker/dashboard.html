@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% block title %}Packages | Partner Deliverables Checker{% endblock %}
+{% block title %}Packages | PartnerReady{% endblock %}
 {% block content %}
 <div class="page-heading"><div><h1>Packages</h1><p class="lede">{% if coordinator %}Team submission worklist{% else %}Your submission worklist{% endif %}</p></div><div class="actions"><a class="button secondary" href="{% url 'coverage' %}">Obligation coverage</a><a class="button" href="{% url 'package_new' %}">Create package</a></div></div>
 <dl class="summary-strip" aria-label="Workspace summary">

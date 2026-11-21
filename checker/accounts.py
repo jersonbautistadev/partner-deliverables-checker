@@ -59,7 +59,7 @@ def queue_verification(account):
     raw = action_token("verify", account.email, user=account.user)
     link = settings.PUBLIC_BASE_URL.rstrip("/") + reverse("verify_email", args=[raw])
     send_mail(
-        "Verify your Partner Deliverables account",
+        "Verify your PartnerReady account",
         f"Confirm this email address to activate workspace access. Open the link and confirm:\n{link}\n"
         f"This link expires in {settings.VERIFICATION_HOURS} hours. Ignore this email if you did not request it.",
         settings.DEFAULT_FROM_EMAIL,
@@ -282,7 +282,7 @@ def workspace_invite(request):
                 )
                 send_mail(
                     "Workspace invitation",
-                    f"You have been invited to a private Partner Deliverables workspace. Sign in with this email, then open:\n{link}\n"
+                    f"You have been invited to a private PartnerReady workspace. Sign in with this email, then open:\n{link}\n"
                     f"This invitation expires in {settings.INVITATION_HOURS} hours. Accept only if you recognize the invitation.",
                     settings.DEFAULT_FROM_EMAIL,
                     [email],

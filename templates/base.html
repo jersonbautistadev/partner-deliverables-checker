@@ -5,7 +5,12 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light">
-  <title>{% block title %}Partner Deliverables Checker{% endblock %}</title>
+  <title>{% block title %}PartnerReady · Partner deliverables checker{% endblock %}</title>
+  <meta name="description" content="PartnerReady tracks event media-partner obligations with automatic file checks, evidence review and coverage.">
+  <meta name="theme-color" content="#e11d48">
+  <link rel="icon" href="{% static 'brand/favicon.svg' %}" type="image/svg+xml">
+  <link rel="icon" href="{% static 'brand/favicon-32.png' %}" sizes="32x32" type="image/png">
+  <link rel="apple-touch-icon" href="{% static 'brand/apple-touch-icon.png' %}">
   <link rel="preload" href="{% static 'fonts/inter-latin-var.woff2' %}" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="{% static 'app.css' %}">
 </head>
@@ -13,7 +18,7 @@
   <a class="skip" href="#main">Skip to content</a>
   <header class="site-header">
     <div class="masthead">
-      <a class="brand" href="{% url 'dashboard' %}">Partner deliverables<span title="{% if workspace %}{{ workspace.name }}{% else %}Private team workspaces{% endif %}">{% if workspace %}{{ workspace.name }}{% else %}Private team workspaces{% endif %}</span></a>
+      <a class="brand" href="{% url 'dashboard' %}"><img class="brand-mark" src="{% static 'brand/partnerready-mark-white.svg' %}" alt="" width="34" height="40"><span class="brand-text">PartnerReady<small title="{% if workspace %}{{ workspace.name }}{% else %}Private team workspaces{% endif %}">{% if workspace %}{{ workspace.name }}{% else %}Private team workspaces{% endif %}</small></span></a>
       {% if user.is_authenticated %}<details class="account account-menu"><summary><span><strong class="account-name" title="{{ user.username }}">{{ user.username }}</strong><small>{% if request.membership %}{{ request.membership.get_role_display }}{% else %}Account{% endif %}</small></span></summary><div class="account-menu-items"><a href="{% url 'password_change' %}">Change password</a><a href="{% url 'deactivate_account' %}">Deactivate account</a><form method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="signout" type="submit">Sign out</button></form></div></details>{% endif %}
     </div>
     {% if user.is_authenticated %}
@@ -34,6 +39,6 @@
     {% for message in messages %}<div role="{% if 'error' in message.tags %}alert{% else %}status{% endif %}" class="notice {{ message.tags }}">{{ message }}</div>{% endfor %}
     {% block content %}{% endblock %}
   </main>
-  <footer class="site-footer"><span>Partner Deliverables Checker</span><a href="{% url 'pilot_information' %}">Pilot, privacy &amp; support</a><span>All times Asia/Manila (UTC+08)</span></footer>
+  <footer class="site-footer"><span>PartnerReady · Partner deliverables checker</span><a href="{% url 'pilot_information' %}">Pilot, privacy &amp; support</a><span>All times Asia/Manila (UTC+08)</span></footer>
 </body>
 </html>

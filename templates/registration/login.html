@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
-{% block title %}Sign in | Partner Deliverables Checker{% endblock %}
+{% load static %}
+{% block title %}Sign in | PartnerReady{% endblock %}
 {% block content %}
-<div class="login-wrap"><h1>Sign in</h1><p class="lede">Use your team account to access packages and requirements.</p><section class="login-panel"><form method="post">{% csrf_token %}{{ form.as_p }}<input type="hidden" name="next" value="{{ next }}"><button class="button" type="submit">Sign in</button></form></section><p class="account-links"><a href="{% url 'signup' %}">Create account</a><a href="{% url 'password_reset' %}">Forgot password?</a><a href="{% url 'verification_required' %}">Verify email</a></p></div>
+<div class="login-wrap"><img class="login-logo" src="{% static 'brand/partnerready-logo.svg' %}" alt="PartnerReady, partner deliverables checker" width="1790" height="400"><h1>Sign in</h1><p class="lede">Use your team account to access packages and requirements.</p><section class="login-panel"><form method="post">{% csrf_token %}{{ form.as_p }}<input type="hidden" name="next" value="{{ next }}"><button class="button" type="submit">Sign in</button></form></section><p class="account-links"><a href="{% url 'signup' %}">Create account</a><a href="{% url 'password_reset' %}">Forgot password?</a><a href="{% url 'verification_required' %}">Verify email</a></p></div>
 {% endblock %}

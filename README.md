@@ -1,9 +1,12 @@
-# Partner Deliverables Checker
+<p align="center"><img src="static/brand/partnerready-logo.svg" alt="PartnerReady, partner deliverables checker" width="460"></p>
+
+# PartnerReady
 
 [![Quality and release checks](https://github.com/jersonbautistadev/partner-deliverables-checker/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/jersonbautistadev/partner-deliverables-checker/actions/workflows/ci.yml)
 
-A Django web app that helps a student event team keep track of what it owes its
-media partners, and what they owe in return, before, during and after the event.
+PartnerReady (the Partner Deliverables Checker) is a Django web app that helps a
+student event team keep track of what it owes its media partners, and what they owe
+in return, before, during and after the event.
 
 Teams running sponsorships juggle agreements full of obligations: "publish a 300–500
 word press release mentioning the event", "place the partner logo on all publicity",

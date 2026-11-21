@@ -39,6 +39,15 @@ implementation is `static/app.css`; the values below win over the generated tabl
   outline (white inside the header) plus a soft ring on inputs.
 - **Fonts:** Inter (100–900 variable) self-hosted from `static/fonts/` under the
   SIL OFL; no third-party font requests.
+- **Brand:** PartnerReady. The mark is a "P" whose counter is a document with a folded
+  corner and a check. Assets in `static/brand/` are generated from one geometric
+  definition by `scripts/build_brand_assets.py` (wordmark outlined from Inter 800):
+  full-color logo and mark (wine `#4C0519` with a rose check) for light backgrounds,
+  white-with-yellow-check versions for the rose header, `currentColor` mono versions,
+  and favicons (SVG, 32px, 180px touch icon, 192/512px). Use the full lockup only where
+  it has room (README, sign-in); use the mark plus the "PartnerReady" text in the app
+  header. The mark is decorative next to visible text (`alt=""`); standalone logos
+  carry descriptive alt text.
 - **Not applicable to this app:** the generated landing-page pattern, marketing
   sections and any decorative motion.
 
