@@ -40,3 +40,15 @@ Code-only rollback: promote `dpl_6CfY…` (pre-fix) or, before any evidence or
 non-applicability decision exists, the previous release `dpl_EHMB7muEkQxpvbXmoJNWHzq9S2qz`.
 Once evidence records exist, prefer a forward fix; see [operations](operations.md).
 The three other Vercel projects connected to this repository were not changed.
+
+## Follow-up release: evidence text wrapping (21 November 2026, 08:2x UTC)
+
+The owner approved releasing `07558f0` (CSS `overflow-wrap: anywhere` on evidence
+explanations; no migration). CI and the protected Preview had passed. Released the
+same way: unaliased Production-target build `dpl_BdgFTja9qhwkQonnsPNLhqQk9YZj`,
+`check --deploy` clean, promotion, branch alias re-pointed to the staging preview of
+the same commit. Post-promotion smoke checks passed again, and the public stylesheet
+contains the new rule. The owner workspace's evidence submissions and review counts
+were unchanged by the release. The one-hour team-scoped Vercel token created only to
+trigger identity verification was revoked before deployment; no token value was stored.
+Code-only rollback: promote `dpl_Bf83upHJ2nCoMs7rxosYdwRQgXfH`.
