@@ -7,34 +7,40 @@
 ---
 
 **Project:** Partner Deliverables Checker
-**Generated:** 2026-11-21 20:29:30
-**Category:** E-signature / Document Workflow
+**Generated:** 2026-11-21 21:22:23
+**Category:** General
 **Token files:** `tokens.json` (W3C Design Tokens Community Group JSON).
 **CSS variables:** `tokens.css` (`:root` custom properties).
 Token files are master-level only; `--page` overrides do not emit tokens.
-**Design Dials:** Density 7/10 (Standard)
+**Design Dials:** Variance 8/10 (Bold / Asymmetric) | Density 7/10 (Standard)
 
 ---
 
 ## Project decisions (override the generated rules below)
 
-Generated with UI/UX Pro Max (`"compliance document review audit tool" --design-system
---density 7`) and adapted for an authenticated Django app built with templates and
-plain CSS. The live implementation is `static/app.css`.
+Generated with UI/UX Pro Max (`"bold vibrant energetic" --design-system --variance 8
+--density 7`), then refined with the owner by comparing rendered dashboards. The live
+implementation is `static/app.css`; the values below win over the generated tables.
 
-- **Fonts:** Inter for headings and body, self-hosted from `static/fonts/` (SIL OFL).
-  Playfair Display is not used: a display serif hurts readability in dense forms and
-  tables. No Google Fonts request is made, so users' browsers do not contact Google.
-- **Actions:** primary buttons are navy `#1E3A5F` with white text (11.5:1). Green is
-  reserved for success/"passed" states (`#15803D` on `#F0FDF4`), never for buttons, so
-  status color keeps one meaning. Statuses always pair color with a text label.
-- **Header:** navy band; muted nav text `#CBD5E1` (7.7:1), active indicator `#4ADE80`.
-- **Controls:** input borders `#7C8BA1` (3.5:1 against white, WCAG 1.4.11); focus is a
-  2px navy outline (white inside the header) plus a soft ring on inputs.
-- **Surfaces:** white cards with 1px `#E2E8F0` borders, 10px radius and a subtle shadow
-  on a `#F8FAFC` page. No hover lift or scale transforms on content.
-- **Not applicable to this app:** the generated landing-page pattern ("Enterprise
-  Gateway"), modals with blur, and `cursor: pointer` cards.
+- **Palette (owner-selected):** rose header `#E11D48`; burgundy primary buttons
+  `#9F1239` (white text 8.0:1, hover `#881337`); page `#FFF1F2`; text `#4C0519`;
+  muted text `#7F1D3A`; dividers `#FECDD3`; frames and focus `#881337`; yellow
+  highlights `#FACC15` (active nav bar, count chips). The generated blue accent
+  `#2563EB` was rejected as out of place and is not used.
+- **Stat tiles:** solid rose family in order `#E11D48`, `#9F1239`, `#881337`, deep
+  wine `#4C0519` (owner replaced black), all with white text (4.7:1 or higher).
+- **Block style:** 2px burgundy frames with hard offset shadows (6px; 4px on phones
+  and secondary cards), 4px radius, uppercase extra-bold page and section headings.
+- **Status colors stay fixed** and are always paired with text: failed `#B91C1C`,
+  missing `#A16207`, needs review `#6D28D9`, passed `#15803D`.
+- **Header text is white** (4.7:1 on rose); lighter tints such as `#FFE4E6` fall
+  below 4.5:1 there and are not used for text.
+- **Controls:** input borders `#B4536B` (4.8:1 against white); focus is a 2px burgundy
+  outline (white inside the header) plus a soft ring on inputs.
+- **Fonts:** Inter (100–900 variable) self-hosted from `static/fonts/` under the
+  SIL OFL; no third-party font requests.
+- **Not applicable to this app:** the generated landing-page pattern, marketing
+  sections and any decorative motion.
 
 
 
@@ -42,35 +48,35 @@ plain CSS. The live implementation is `static/app.css`.
 
 | Role | Hex | CSS Variable |
 |------|-----|--------------|
-| Primary | `#1E3A5F` | `--color-primary` |
+| Primary | `#E11D48` | `--color-primary` |
 | On Primary | `#FFFFFF` | `--color-on-primary` |
-| Secondary | `#2563EB` | `--color-secondary` |
-| On Secondary | `#FFFFFF` | `--color-on-secondary` |
-| Accent/CTA | `#16A34A` | `--color-accent` |
-| On Accent/CTA | `#000000` | `--color-on-accent` |
-| Background | `#F8FAFC` | `--color-background` |
-| Foreground | `#0F172A` | `--color-foreground` |
+| Secondary | `#FB7185` | `--color-secondary` |
+| On Secondary | `#0F172A` | `--color-on-secondary` |
+| Accent/CTA | `#2563EB` | `--color-accent` |
+| On Accent/CTA | `#FFFFFF` | `--color-on-accent` |
+| Background | `#FFF1F2` | `--color-background` |
+| Foreground | `#881337` | `--color-foreground` |
 | Card | `#FFFFFF` | `--color-card` |
-| Card Foreground | `#0F172A` | `--color-card-foreground` |
-| Muted | `#E9EEF5` | `--color-muted` |
+| Card Foreground | `#881337` | `--color-card-foreground` |
+| Muted | `#F0ECF2` | `--color-muted` |
 | Muted Foreground | `#475569` | `--color-muted-foreground` |
-| Border | `#CBD5E1` | `--color-border` |
+| Border | `#FECDD3` | `--color-border` |
 | Destructive | `#DC2626` | `--color-destructive` |
 | On Destructive | `#FFFFFF` | `--color-on-destructive` |
-| Ring | `#1E3A5F` | `--color-ring` |
+| Ring | `#E11D48` | `--color-ring` |
 
-**Color Notes:** Trust navy + signature green + audit trail
+**Color Notes:** Vibrant rose + engagement blue
 
 ### Typography
 
-- **Heading Font:** Inter
-- **Body Font:** Playfair Display
-- **Mood:** bold typography, editorial, poster, near-black, vermillion, luxury, type-as-hero, manifesto, high-contrast
-- **Google Fonts:** [Inter + Playfair Display](https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=JetBrains+Mono:wght@400&family=Playfair+Display:ital@1)
+- **Heading Font:** Outfit
+- **Body Font:** Work Sans
+- **Mood:** geometric, modern, clean, balanced, contemporary, versatile
+- **Google Fonts:** [Outfit + Work Sans](https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Work+Sans:wght@300;400;500;600;700&display=swap)
 
 **CSS Import:**
 ```css
-@import url('https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=JetBrains+Mono:wght@400&family=Playfair+Display:ital@1&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Work+Sans:wght@300;400;500;600;700&display=swap');
 ```
 
 ### Spacing Variables
@@ -105,8 +111,8 @@ plain CSS. The live implementation is `static/app.css`.
 ```css
 /* Primary Button */
 .btn-primary {
-  background: #16A34A;
-  color: #000000;
+  background: #2563EB;
+  color: #FFFFFF;
   padding: 12px 24px;
   border-radius: 8px;
   font-weight: 600;
@@ -122,8 +128,8 @@ plain CSS. The live implementation is `static/app.css`.
 /* Secondary Button */
 .btn-secondary {
   background: transparent;
-  color: #1E3A5F;
-  border: 2px solid #1E3A5F;
+  color: #881337;
+  border: 2px solid #E11D48;
   padding: 12px 24px;
   border-radius: 8px;
   font-weight: 600;
@@ -136,7 +142,7 @@ plain CSS. The live implementation is `static/app.css`.
 
 ```css
 .card {
-  background: #F8FAFC;
+  background: #FFF1F2;
   border-radius: 12px;
   padding: 24px;
   box-shadow: var(--shadow-md);
@@ -162,9 +168,9 @@ plain CSS. The live implementation is `static/app.css`.
 }
 
 .input:focus {
-  border-color: #1E3A5F;
+  border-color: #E11D48;
   outline: none;
-  box-shadow: 0 0 0 3px #1E3A5F20;
+  box-shadow: 0 0 0 3px #E11D4820;
 }
 ```
 
@@ -190,29 +196,26 @@ plain CSS. The live implementation is `static/app.css`.
 
 ## Style Guidelines
 
-**Style:** Minimalism & Swiss Style
+**Style:** Brutalism
 
-**Keywords:** Clean, simple, spacious, functional, white space, high contrast, geometric, sans-serif, grid-based, essential
+**Keywords:** Raw, unpolished, stark, high contrast, plain text, default fonts, visible borders, asymmetric, anti-design
 
-**Best For:** Enterprise apps, dashboards, documentation sites, SaaS platforms, professional tools
+**Best For:** Design portfolios, artistic projects, counter-culture brands, editorial/media sites, tech blogs
 
-**Key Effects:** Subtle hover (200-250ms), smooth transitions, sharp shadows if any, clear type hierarchy, fast loading
+**Key Effects:** No smooth transitions (instant), sharp corners (0px), bold typography (700+), visible grid, large blocks
 
 ### Page Pattern
 
-**Pattern Name:** Enterprise Gateway
+**Pattern Name:** Hero + Features + CTA
 
-- **Conversion Strategy:** Path selection (I am a...). Mega menu navigation. Trust signals prominent. Provide pause/stop for video and rotating logos; stop on focus and reduced motion. Logo carousel controls must be keyboard operable; pause moving media offscreen/hidden and render a static final state under reduced motion.
-- **CTA Placement:** Contact Sales (Primary) + Login (Secondary)
-- **Section Order:** Hero (Video/Mission) > Solutions by Industry > Solutions by Role > Client Logos > Contact Sales
+- **Conversion Strategy:** Deep CTA placement. For CTA label text, verify at least 4.5:1 against the button fill; use 7:1 only when the product explicitly targets AAA normal-text contrast. Keep focus and component boundaries independently visible. Disable hero parallax under reduced motion and render its static final state.
+- **CTA Placement:** Hero (sticky) + Bottom
+- **Section Order:** Hero with headline/image > Value prop > Key features (3-5) > CTA section > Footer
 
 ---
 
 ## Anti-Patterns (Do NOT Use)
 
-- ❌ Confusing signing flow
-- ❌ weak audit trail
-- ❌ hidden consent
 
 ### Additional Forbidden Patterns
 

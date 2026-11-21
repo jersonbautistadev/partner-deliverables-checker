@@ -8,24 +8,24 @@
 
 /* === SEMANTIC === */
 :root {
-  --color-primary: #1E3A5F;
+  --color-primary: #E11D48;
   --color-on-primary: #FFFFFF;
-  --color-secondary: #2563EB;
-  --color-on-secondary: #FFFFFF;
-  --color-accent: #16A34A;
-  --color-on-accent: #000000;
-  --color-background: #F8FAFC;
-  --color-foreground: #0F172A;
+  --color-secondary: #FB7185;
+  --color-on-secondary: #0F172A;
+  --color-accent: #2563EB;
+  --color-on-accent: #FFFFFF;
+  --color-background: #FFF1F2;
+  --color-foreground: #881337;
   --color-card: #FFFFFF;
-  --color-card-foreground: #0F172A;
-  --color-muted: #E9EEF5;
+  --color-card-foreground: #881337;
+  --color-muted: #F0ECF2;
   --color-muted-foreground: #475569;
-  --color-border: #CBD5E1;
+  --color-border: #FECDD3;
   --color-destructive: #DC2626;
   --color-on-destructive: #FFFFFF;
-  --color-ring: #1E3A5F;
-  --font-heading: Inter, sans-serif;
-  --font-body: "Playfair Display", serif;
+  --color-ring: #E11D48;
+  --font-heading: Outfit, sans-serif;
+  --font-body: "Work Sans", sans-serif;
   --space-xs: 4px;
   --space-sm: 8px;
   --space-md: 16px;
