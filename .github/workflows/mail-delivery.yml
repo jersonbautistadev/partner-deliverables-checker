@@ -92,7 +92,7 @@ jobs:
       BACKUP_STORAGE_LIMIT_BYTES: "3221225472"
       BACKUP_HEALTHCHECK_URL: ${{ secrets.STAGING_BACKUP_HEALTHCHECK_URL }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -153,7 +153,7 @@ jobs:
       BACKUP_STORAGE_LIMIT_BYTES: "3221225472"
       BACKUP_HEALTHCHECK_URL: ${{ secrets.PRODUCTION_BACKUP_HEALTHCHECK_URL }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
